@@ -21,7 +21,11 @@ service CliToHub {
     rpc UpgradeReconfigurePorts(UpgradeReconfigurePortsRequest) returns (UpgradeReconfigurePortsReply) {}
     rpc SetConfig(SetConfigRequest) returns (SetConfigReply) {}
     rpc GetConfig(GetConfigRequest) returns (GetConfigReply) {}
+    rpc DoAll(DoAllRequest) returns (DoAllReply) {}
 }
+
+message DoAllRequest {}
+message DoAllReply {}
 
 message UpgradeReconfigurePortsRequest {}
 message UpgradeReconfigurePortsReply {}

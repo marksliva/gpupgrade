@@ -24,7 +24,8 @@ func main() {
 
 	confirmValidCommand()
 
-	root.AddCommand(prepare, config, status, check, version, upgrade)
+	doAll := createDoAllCommand()
+	root.AddCommand(prepare, config, status, check, version, upgrade, doAll)
 
 	subInit := createInitSubcommand()
 	prepare.AddCommand(subStartHub, subInitCluster, subShutdownClusters, subStartAgents, subInit)
@@ -47,7 +48,7 @@ func main() {
 
 func confirmValidCommand() {
 	if len(os.Args[1:]) < 1 {
-		log.Fatal("Please specify one command of: check, config, prepare, status, upgrade, or version")
+		log.Fatal("Please specify one command of: check, config, do-all, prepare, status, upgrade, or version")
 	}
 }
 

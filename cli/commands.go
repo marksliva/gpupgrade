@@ -113,22 +113,26 @@ var subStartHub = &cobra.Command{
 	Short: "starts the hub",
 	Long:  "starts the hub",
 	Run: func(cmd *cobra.Command, args []string) {
-		preparer := commanders.Preparer{}
-		err := preparer.StartHub()
-		if err != nil {
-			gplog.Error(err.Error())
-			os.Exit(1)
-		}
-
-		client := connectToHub()
-		err = preparer.VerifyConnectivity(client)
-
-		if err != nil {
-			gplog.Error("gpupgrade is unable to connect via gRPC to the hub")
-			gplog.Error("%v", err)
-			os.Exit(1)
-		}
+		doStartHub()
 	},
+}
+
+func doStartHub() {
+	preparer := commanders.Preparer{}
+	err := preparer.StartHub()
+	if err != nil {
+		gplog.Error(err.Error())
+		os.Exit(1)
+	}
+
+	client := connectToHub()
+	err = preparer.VerifyConnectivity(client)
+
+	if err != nil {
+		gplog.Error("gpupgrade is unable to connect via gRPC to the hub")
+		gplog.Error("%v", err)
+		os.Exit(1)
+	}
 }
 
 var subShutdownClusters = &cobra.Command{
@@ -431,7 +435,7 @@ var subReconfigurePorts = &cobra.Command{
 
 // gpupgrade prepare init
 func createInitSubcommand() *cobra.Command {
-	var oldBinDir, newBinDir string
+	var oldBinDir, newBinDir *string
 
 	subInit := &cobra.Command{
 		Use:   "init",
@@ -443,14 +447,50 @@ func createInitSubcommand() *cobra.Command {
 			cmd.SilenceUsage = true
 
 			stateDir := utils.GetStateDir()
-			return commanders.DoInit(stateDir, oldBinDir, newBinDir)
+			return commanders.DoInit(stateDir, *oldBinDir, *newBinDir)
 		},
 	}
 
-	subInit.PersistentFlags().StringVar(&oldBinDir, "old-bindir", "", "install directory for old gpdb version")
-	subInit.MarkPersistentFlagRequired("old-bindir")
-	subInit.PersistentFlags().StringVar(&newBinDir, "new-bindir", "", "install directory for new gpdb version")
-	subInit.MarkPersistentFlagRequired("new-bindir")
+	oldBinDir, newBinDir = addInitFlags(subInit)
 
 	return subInit
+}
+
+func createDoAllCommand() *cobra.Command {
+	var oldBinDir, newBinDir *string
+
+	doAll := &cobra.Command{
+		Use:   "do-all",
+		Short: "execute all steps in order",
+		Long:  "execute all steps in order",
+		Run: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
+
+			stateDir := utils.GetStateDir()
+			err := commanders.DoInit(stateDir, *oldBinDir, *newBinDir)
+			if err != nil {
+				gplog.Error("Failed to initialize the hub: %v", err)
+				os.Exit(1)
+			}
+
+			doStartHub()
+
+			err := commanders.DoAll()
+			if err != nil {
+				gplog.Error("Failed to start upgrade process: %v", err)
+				os.Exit(1)
+			}
+		},
+	}
+
+	oldBinDir, newBinDir = addInitFlags(doAll)
+
+	return doAll
+}
+
+func addInitFlags(cmd *cobra.Command) (oldBinDir *string, newBinDir *string) {
+	cmd.PersistentFlags().StringVar(oldBinDir, "old-bindir", "", "install directory for old gpdb version")
+	cmd.MarkPersistentFlagRequired("old-bindir")
+	cmd.PersistentFlags().StringVar(newBinDir, "new-bindir", "", "install directory for new gpdb version")
+	cmd.MarkPersistentFlagRequired("new-bindir")
 }

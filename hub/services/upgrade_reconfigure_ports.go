@@ -17,6 +17,14 @@ const (
 )
 
 func (h *Hub) UpgradeReconfigurePorts(ctx context.Context, in *pb.UpgradeReconfigurePortsRequest) (*pb.UpgradeReconfigurePortsReply, error) {
+	err := ReconfigurePorts()
+	if err != nil {
+		gplog.Error(err.Error())
+	}
+	return &pb.UpgradeReconfigurePortsReply{}, err
+}
+
+func (h *Hub) ReconfigurePorts() error {
 	gplog.Info("Started processing reconfigure-ports request")
 
 	step := h.checklist.GetStepWriter(upgradestatus.RECONFIGURE_PORTS)
@@ -24,10 +32,12 @@ func (h *Hub) UpgradeReconfigurePorts(ctx context.Context, in *pb.UpgradeReconfi
 	err := step.ResetStateDir()
 	if err != nil {
 		gplog.Error("error from ResetStateDir " + err.Error())
+		return err
 	}
 	err = step.MarkInProgress()
 	if err != nil {
 		gplog.Error("error from MarkInProgress " + err.Error())
+		return err
 	}
 
 	sourcePort := h.source.MasterPort()
@@ -41,11 +51,11 @@ func (h *Hub) UpgradeReconfigurePorts(ctx context.Context, in *pb.UpgradeReconfi
 		gplog.Error("reconfigure-ports failed %s: %s", output, err)
 
 		step.MarkFailed()
-		return nil, err
+		return err
 	}
 
 	gplog.Info("reconfigure-ports succeeded")
 	step.MarkComplete()
 
-	return &pb.UpgradeReconfigurePortsReply{}, nil
+	return nil
 }

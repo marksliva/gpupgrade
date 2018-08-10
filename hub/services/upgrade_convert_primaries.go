@@ -12,22 +12,30 @@ import (
 )
 
 func (h *Hub) UpgradeConvertPrimaries(ctx context.Context, in *pb.UpgradeConvertPrimariesRequest) (*pb.UpgradeConvertPrimariesReply, error) {
+	err := h.ConvertPrimaries()
+	if err != nil {
+		gplog.Error(err.Error())
+	}
+	return &pb.UpgradeConvertPrimariesReply{}, err
+}
+
+func (h *Hub) ConvertPrimaries() error {
 	conns, err := h.AgentConns()
 	if err != nil {
 		gplog.Error("Error connecting to the agents. Err: %v", err)
-		return &pb.UpgradeConvertPrimariesReply{}, err
+		return err
 	}
 	agentErrs := make(chan error, len(conns))
 
 	dataDirPair, err := h.getDataDirPairs()
 	if err != nil {
 		gplog.Error("Error getting old and new primary Datadirs. Err: %v", err)
-		return &pb.UpgradeConvertPrimariesReply{}, err
+		return err
 	}
 
 	wg := sync.WaitGroup{}
+	wg.Add(len(conns))
 	for _, conn := range conns {
-		wg.Add(1)
 		go func(c *Connection) {
 			defer wg.Done()
 
@@ -50,7 +58,7 @@ func (h *Hub) UpgradeConvertPrimaries(ctx context.Context, in *pb.UpgradeConvert
 		err = fmt.Errorf("%d agents failed to start pg_upgrade on the primaries. See logs for additional details", len(agentErrs))
 	}
 
-	return &pb.UpgradeConvertPrimariesReply{}, err
+	return err
 }
 
 func (h *Hub) getDataDirPairs() (map[string][]*pb.DataDirPair, error) {
