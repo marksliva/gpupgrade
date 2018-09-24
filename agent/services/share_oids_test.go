@@ -2,10 +2,8 @@ package services_test
 
 import (
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
-	"github.com/greenplum-db/gpupgrade/utils"
-	"github.com/onsi/gomega/gbytes"
-
 	pb "github.com/greenplum-db/gpupgrade/idl"
+	"github.com/greenplum-db/gpupgrade/utils"
 
 	"os"
 	"strings"
@@ -18,9 +16,6 @@ import (
 
 var _ = Describe("CopyMasterDirectoryToSegmentDirectories", func() {
 	var (
-		testStdOut   *gbytes.Buffer
-		testStdErr   *gbytes.Buffer
-		testLogFile  *gbytes.Buffer
 		agentRequest *pb.CopyMasterDirRequest
 		testExecutor *testhelper.TestExecutor
 		stattedFiles []string
@@ -29,8 +24,6 @@ var _ = Describe("CopyMasterDirectoryToSegmentDirectories", func() {
 	)
 
 	BeforeEach(func() {
-		testStdOut, testStdErr, testLogFile = testhelper.SetupTestLogger()
-
 		agentRequest = &pb.CopyMasterDirRequest{
 			MasterDir: "/tmp/masterDataDir",
 			Datadirs:  []string{"/tmp/dataDir0", "/tmp/dataDir1"},

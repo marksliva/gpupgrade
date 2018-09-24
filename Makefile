@@ -34,7 +34,7 @@ format:
 		goimports -w .
 
 lint:
-		! gofmt -l agent/ cli/ db/ hub/ install/ integrations/ shellparsers/ testutils/ utils/ | read
+		! gofmt -l agent/ cli/ db/ hub/ integrations/ testutils/ utils/ | read
 		gometalinter --config=gometalinter.config -s vendor ./...
 
 unit:
@@ -45,7 +45,7 @@ integration:
 
 # check runs all tests. Use -k to keep going after the first failure.
 .PHONY: check
-check:
+check: lint
 		ginkgo -r -keepGoing -randomizeSuites -randomizeAllSpecs
 		PATH=.:$$PATH bats -r ./test
 
