@@ -22,24 +22,25 @@ make
 # Install the artifacts onto the cluster machines.
 artifacts='gpupgrade gpupgrade_hub gpupgrade_agent'
 for host in "${hosts[@]}"; do
-    scp $artifacts "gpadmin@$host:/usr/local/greenplum-db-devel/bin/"
+    scp $artifacts "gpadmin@$host:${GPHOME_NEW}/bin/"
 done
 
 # Load the SQL dump into the cluster.
 echo 'Loading SQL dump...'
-time ssh mdw bash <<"EOF"
+time ssh mdw GPHOME=${GPHOME} bash <<"EOF"
     set -eux -o pipefail
 
-    source /usr/local/greenplum-db-devel/greenplum_path.sh
+    source ${GPHOME}/greenplum_path.sh
     export PGOPTIONS='--client-min-messages=warning'
     unxz < /tmp/dump.sql.xz | psql -f - postgres
 EOF
 
 # Now do the upgrade.
-time ssh mdw bash <<"EOF"
+time ssh mdw GPHOME=${GPHOME} GPHOME_NEW=${GPHOME_NEW} bash <<"EOF"
+$MY_VAR
     set -eu -o pipefail
 
-    source /usr/local/greenplum-db-devel/greenplum_path.sh
+    source ${GPHOME}/greenplum_path.sh
     export PGPORT=5432 # TODO remove the need for this
 
     wait_for_step() {
@@ -83,7 +84,7 @@ time ssh mdw bash <<"EOF"
         echo "Dumping cluster contents from port ${port} to ${dumpfile}..."
 
         ssh -n mdw "
-            source /usr/local/greenplum-db-devel/greenplum_path.sh
+            source ${GPHOME}/greenplum_path.sh
             pg_dumpall -p ${port} -f '$dumpfile'
         "
     }
@@ -101,9 +102,12 @@ time ssh mdw bash <<"EOF"
 
     dump_sql 5432 /tmp/old.sql
 
+    sed -e "s|GPHOME=.*$|GPHOME=$GPHOME_NEW|" -i ${GPHOME_NEW}/greenplum_path.sh
+    source ${GPHOME_NEW}/greenplum_path.sh
+
     gpupgrade prepare init \
-              --new-bindir /usr/local/greenplum-db-devel/bin \
-              --old-bindir /usr/local/greenplum-db-devel/bin
+              --new-bindir ${GPHOME}/bin \
+              --old-bindir ${GPHOME_NEW}/bin
 
     gpupgrade prepare start-hub
 
