@@ -7,12 +7,12 @@ image_resource:
     tag: latest
 
 params:
-  TARBALL_DIR:
+  RPM_DIR:
 
 inputs:
 - name: gpupgrade_src
 - name: cluster_env_files
-- name: bin_gpdb_new
+- name: rpm_gpdb_new
 - name: ccp_src
 
 run:

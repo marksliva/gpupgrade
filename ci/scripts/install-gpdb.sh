@@ -1,20 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
-extract_gpdb_tarball() {
-    local node_hostname=$1 tarball_dir=$2
+install_gpdb_rpm() {
+    local node_hostname=$1 rpm_dir=$2
 
-    scp "${tarball_dir}"/*.tar.gz "${node_hostname}:/tmp/gpdb_binary_new.tar.gz"
+    scp "${rpm_dir}"/*.rpm "${node_hostname}:/tmp/gpdb_new.rpm"
     ssh -ttn centos@"$node_hostname" '
-        sudo mkdir -p /usr/local/greenplum-db-devel-new
-        sudo tar -xf /tmp/gpdb_binary_new.tar.gz -C /usr/local/greenplum-db-devel-new
-        sudo chown -R gpadmin:gpadmin /usr/local/greenplum-db-devel-new
+        sudo rpm -hi /tmp/gpdb_new.rpm
+        sudo chown -R gpadmin:gpadmin /usr/local/greenplum-db*
     '
 }
 
 ./ccp_src/scripts/setup_ssh_to_cluster.sh
 
 for segment_host in $(cat cluster_env_files/hostfile_all); do
-  extract_gpdb_tarball $segment_host "${TARBALL_DIR}"
+    install_gpdb_rpm $segment_host "${RPM_DIR}"
 done
 

@@ -49,6 +49,13 @@ resources:
     json_key: {{concourse-gcs-resources-service-account-key}}
     regexp: server/published/gpdb6/server-rc-(.*)-rhel6_x86_64.debug.tar.gz
 
+- name: rpm_gpdb6_centos6
+  type: gcs
+  source:
+    bucket: {{gcs-bucket}}
+    json_key: {{concourse-gcs-resources-service-account-key}}
+    regexp: server/released/gpdb6/greenplum-db-(.*)-rhel6-x86_64.rpm
+
 - name: bin_gpdb5_centos6
   type: s3
   source:
@@ -148,7 +155,7 @@ jobs:
     - get: gpdb_src
     - get: gpupgrade_src
       trigger: true
-    - get: bin_gpdb6_centos6
+    - get: rpm_gpdb6_centos6
       trigger: true
     - get: bin_gpdb5_centos6
       trigger: true
@@ -176,14 +183,14 @@ jobs:
   - task: gpdb_install_new
     file: gpupgrade_src/ci/tasks/install-gpdb.yml
     input_mapping:
-      bin_gpdb_new: bin_gpdb6_centos6
+      rpm_gpdb_new: rpm_gpdb6_centos6
     params:
-      TARBALL_DIR: bin_gpdb_new
+      RPM_DIR: rpm_gpdb_new
   - task: cluster-upgrade
     file: gpupgrade_src/ci/tasks/cluster-upgrade.yml
     params:
       GPHOME: /usr/local/greenplum-db-devel
-      GPHOME_NEW: /usr/local/greenplum-db-devel-new
+      GPHOME_NEW: /usr/local/greenplum-db
     input_mapping:
       sqldump: icw_gporca_centos6_dump5_simple
       bin_gpdb: bin_gpdb5_centos6
