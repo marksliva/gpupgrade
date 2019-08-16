@@ -190,7 +190,7 @@ jobs:
     file: gpupgrade_src/ci/tasks/cluster-upgrade.yml
     params:
       GPHOME: /usr/local/greenplum-db-devel
-      GPHOME_NEW: /usr/local/greenplum-db
+      GPHOME_NEW: /usr/local/greenplum-database
     input_mapping:
       sqldump: icw_gporca_centos6_dump5_simple
       bin_gpdb: bin_gpdb5_centos6
