@@ -239,6 +239,9 @@ jobs:
     file: ccp_src/ci/tasks/gpinitsystem.yml
   - task: cluster-upgrade
     file: gpupgrade_src/ci/tasks/cluster-upgrade.yml
+    params:
+      GPHOME: /usr/local/greenplum-db-devel
+      GPHOME_NEW: /usr/local/greenplum-db-devel
     input_mapping: {sqldump: icw_gporca_centos6_dump}
     on_failure:
       do:
