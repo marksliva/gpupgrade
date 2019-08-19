@@ -7,13 +7,13 @@ image_resource:
     tag: latest
 
 params:
-  TARBALL_DIR:
+  GPHOME:
 
 inputs:
 - name: gpupgrade_src
 - name: cluster_env_files
-- name: bin_gpdb_new
 - name: ccp_src
 
 run:
-  path: gpupgrade_src/ci/scripts/install-gpdb.sh
+  path: gpupgrade_src/ci/scripts/move-and-restart-old-gpdb.sh
+

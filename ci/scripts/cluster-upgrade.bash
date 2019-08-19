@@ -37,7 +37,6 @@ EOF
 
 # Now do the upgrade.
 time ssh mdw GPHOME=${GPHOME} GPHOME_NEW=${GPHOME_NEW} bash <<"EOF"
-$MY_VAR
     set -eu -o pipefail
 
     source ${GPHOME}/greenplum_path.sh
@@ -102,13 +101,14 @@ $MY_VAR
 
     dump_sql 5432 /tmp/old.sql
 
-    sed -e "s|GPHOME=.*$|GPHOME=$GPHOME|" -i ${GPHOME}/greenplum_path.sh
-    sed -e "s|GPHOME=.*$|GPHOME=$GPHOME_NEW|" -i ${GPHOME_NEW}/greenplum_path.sh
     source ${GPHOME_NEW}/greenplum_path.sh
 
+    echo "GPHOME: ${GPHOME}"
+    echo "GPHOME_NEW: ${GPHOME_NEW}"
+
     gpupgrade prepare init \
-              --new-bindir ${GPHOME}/bin \
-              --old-bindir ${GPHOME_NEW}/bin
+              --old-bindir ${GPHOME}/bin \
+              --new-bindir ${GPHOME_NEW}/bin
 
     gpupgrade prepare start-hub
 
