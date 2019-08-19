@@ -102,6 +102,7 @@ $MY_VAR
 
     dump_sql 5432 /tmp/old.sql
 
+    sed -e "s|GPHOME=.*$|GPHOME=$GPHOME|" -i ${GPHOME}/greenplum_path.sh
     sed -e "s|GPHOME=.*$|GPHOME=$GPHOME_NEW|" -i ${GPHOME_NEW}/greenplum_path.sh
     source ${GPHOME_NEW}/greenplum_path.sh
 

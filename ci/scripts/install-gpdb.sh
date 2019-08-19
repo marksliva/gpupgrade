@@ -6,6 +6,7 @@ install_gpdb_rpm() {
 
     scp "${rpm_dir}"/*.rpm "${node_hostname}:/tmp/gpdb_new.rpm"
     ssh -ttn centos@"$node_hostname" '
+        sudo mv /usr/local/greenplum-db-devel /usr/local/greenplum-db-old
         sudo rpm -hi /tmp/gpdb_new.rpm
         sudo chown -R gpadmin:gpadmin /usr/local/greenplum-db*
     '
