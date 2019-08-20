@@ -27,14 +27,15 @@ for host in "${hosts[@]}"; do
 done
 
 # Load the SQL dump into the cluster.
-echo 'Loading SQL dump...'
-time ssh mdw GPHOME_OLD=${GPHOME_OLD} bash <<"EOF"
-    set -eux -o pipefail
-
-    source ${GPHOME_OLD}/greenplum_path.sh
-    export PGOPTIONS='--client-min-messages=warning'
-    unxz < /tmp/dump.sql.xz | psql -f - postgres
-EOF
+# todo: put this back for the 6-to-6 case
+#echo 'Loading SQL dump...'
+#time ssh mdw GPHOME_OLD=${GPHOME_OLD} bash <<"EOF"
+#    set -eux -o pipefail
+#
+#    source ${GPHOME_OLD}/greenplum_path.sh
+#    export PGOPTIONS='--client-min-messages=warning'
+#    unxz < /tmp/dump.sql.xz | psql -f - postgres
+#EOF
 
 # Now do the upgrade.
 time ssh mdw GPHOME_OLD=${GPHOME_OLD} GPHOME_NEW=${GPHOME_NEW} bash <<"EOF"
