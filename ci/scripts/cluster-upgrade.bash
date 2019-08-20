@@ -23,6 +23,7 @@ make
 artifacts='gpupgrade gpupgrade_hub gpupgrade_agent'
 for host in "${hosts[@]}"; do
     scp $artifacts "gpadmin@$host:${GPHOME_OLD}/bin/"
+    scp $artifacts "gpadmin@$host:${GPHOME_NEW}/bin/"
 done
 
 # Load the SQL dump into the cluster.
