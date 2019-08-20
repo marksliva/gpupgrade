@@ -27,19 +27,19 @@ done
 
 # Load the SQL dump into the cluster.
 echo 'Loading SQL dump...'
-time ssh mdw GPHOME=${GPHOME} bash <<"EOF"
+time ssh mdw GPHOME_OLD=${GPHOME_OLD} bash <<"EOF"
     set -eux -o pipefail
 
-    source ${GPHOME}/greenplum_path.sh
+    source ${GPHOME_OLD}/greenplum_path.sh
     export PGOPTIONS='--client-min-messages=warning'
     unxz < /tmp/dump.sql.xz | psql -f - postgres
 EOF
 
 # Now do the upgrade.
-time ssh mdw GPHOME=${GPHOME} GPHOME_NEW=${GPHOME_NEW} bash <<"EOF"
+time ssh mdw GPHOME_OLD=${GPHOME_OLD} GPHOME_NEW=${GPHOME_NEW} bash <<"EOF"
     set -eu -o pipefail
 
-    source ${GPHOME}/greenplum_path.sh
+    source ${GPHOME_OLD}/greenplum_path.sh
     export PGPORT=5432 # TODO remove the need for this
 
     wait_for_step() {
@@ -83,7 +83,7 @@ time ssh mdw GPHOME=${GPHOME} GPHOME_NEW=${GPHOME_NEW} bash <<"EOF"
         echo "Dumping cluster contents from port ${port} to ${dumpfile}..."
 
         ssh -n mdw "
-            source ${GPHOME}/greenplum_path.sh
+            source ${GPHOME_OLD}/greenplum_path.sh
             pg_dumpall -p ${port} -f '$dumpfile'
         "
     }
@@ -103,11 +103,11 @@ time ssh mdw GPHOME=${GPHOME} GPHOME_NEW=${GPHOME_NEW} bash <<"EOF"
 
     source ${GPHOME_NEW}/greenplum_path.sh
 
-    echo "GPHOME: ${GPHOME}"
+    echo "GPHOME_OLD: ${GPHOME_OLD}"
     echo "GPHOME_NEW: ${GPHOME_NEW}"
 
     gpupgrade prepare init \
-              --old-bindir ${GPHOME}/bin \
+              --old-bindir ${GPHOME_OLD}/bin \
               --new-bindir ${GPHOME_NEW}/bin
 
     gpupgrade prepare start-hub

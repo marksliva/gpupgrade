@@ -7,7 +7,7 @@ image_resource:
     tag: "6-gcc6.2-llvm3.7"
 
 params:
-  GPHOME:
+  GPHOME_OLD:
   GPHOME_NEW:
 
 inputs:
