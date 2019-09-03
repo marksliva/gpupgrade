@@ -61,8 +61,8 @@ func (m *MockHubClient) PrepareShutdownClusters(ctx context.Context, in *idl.Pre
 	return nil, nil
 }
 
-func (m *MockHubClient) UpgradeConvertMaster(ctx context.Context, in *idl.UpgradeConvertMasterRequest, opts ...grpc.CallOption) (*idl.UpgradeConvertMasterReply, error) {
-	return nil, nil
+func (m *MockHubClient) UpgradeConvertMaster(in *idl.UpgradeConvertMasterRequest, stream idl.CliToHub_UpgradeConvertMasterServer, opts ...grpc.CallOption) error {
+	return nil
 }
 
 func (m *MockHubClient) PrepareStartAgents(ctx context.Context, in *idl.PrepareStartAgentsRequest, opts ...grpc.CallOption) (*idl.PrepareStartAgentsReply, error) {
