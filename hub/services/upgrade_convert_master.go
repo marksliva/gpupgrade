@@ -2,7 +2,7 @@ package services
 
 import (
 	"io"
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -26,8 +26,7 @@ func (h *Hub) UpgradeConvertMaster(in *idl.UpgradeConvertMasterRequest, stream i
 		return err
 	}
 
-	pair := clusterPair{h.source, h.target}
-	err = pair.ConvertMaster(stream, ioutil.Discard /* TODO */, "")
+	err = h.UpgradeMaster(stream)
 
 	if err != nil {
 		gplog.Error(err.Error())
@@ -37,6 +36,28 @@ func (h *Hub) UpgradeConvertMaster(in *idl.UpgradeConvertMasterRequest, stream i
 	}
 
 	return err
+}
+
+func (h *Hub) UpgradeMaster(stream idl.CliToHub_UpgradeConvertMasterServer) error {
+	// Make sure our working directory exists.
+	wd := utils.MasterPGUpgradeDirectory(h.conf.StateDir)
+	err := utils.System.MkdirAll(wd, 0700)
+	if err != nil {
+		return err
+	}
+
+	// Create a log file to contain pg_upgrade output.
+	log, err := utils.System.OpenFile(
+		filepath.Join(wd, "pg_upgrade.log"),
+		os.O_WRONLY|os.O_CREATE,
+		0600,
+	)
+	if err != nil {
+		return err
+	}
+
+	pair := clusterPair{h.source, h.target}
+	return pair.ConvertMaster(stream, log, wd)
 }
 
 // muxedStream provides io.Writers that wrap both gRPC stream and a parallel
