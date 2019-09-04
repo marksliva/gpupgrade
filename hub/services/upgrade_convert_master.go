@@ -1,15 +1,17 @@
 package services
 
 import (
-	"bytes"
 	"io"
+	"io/ioutil"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"sync"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpupgrade/hub/upgradestatus"
 	"github.com/greenplum-db/gpupgrade/idl"
-	"github.com/greenplum-db/gpupgrade/utils/log"
+	"github.com/greenplum-db/gpupgrade/utils"
 )
 
 // Allow exec.Command to be mocked out by exectest.NewCommand.
@@ -24,18 +26,17 @@ func (h *Hub) UpgradeConvertMaster(in *idl.UpgradeConvertMasterRequest, stream i
 		return err
 	}
 
-	go func() {
-		defer log.WritePanics()
+	pair := clusterPair{h.source, h.target}
+	err = pair.ConvertMaster(stream, ioutil.Discard /* TODO */, "")
 
-		if err := ConvertMaster(stream, &bytes.Buffer{}); err != nil {
-			gplog.Error(err.Error())
-			step.MarkFailed()
-		} else {
-			step.MarkComplete()
-		}
-	}()
+	if err != nil {
+		gplog.Error(err.Error())
+		step.MarkFailed()
+	} else {
+		step.MarkComplete()
+	}
 
-	return nil
+	return err
 }
 
 // muxedStream provides io.Writers that wrap both gRPC stream and a parallel
@@ -93,45 +94,42 @@ func (w *streamWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func ConvertMaster(stream idl.CliToHub_UpgradeConvertMasterServer, out io.Writer) error {
+// clusterPair simply holds the source and target clusters.
+type clusterPair struct {
+	Source, Target *utils.Cluster
+}
+
+// ConvertMaster invokes pg_upgrade on the local master data directory from the
+// given working directory, which must exist prior to invocation. It streams all
+// standard output and error from pg_upgrade to the given io.Writer (though the
+// order in which those streams interleave is inherently nondeterministic), and
+// additionally sends the data through the given gRPC stream.
+//
+// Errors when writing to the io.Writer are fatal, but errors encountered during
+// gRPC streaming are logged and otherwise ignored. The pg_upgrade execution
+// will continue even if the client disconnects.
+func (c clusterPair) ConvertMaster(stream idl.CliToHub_UpgradeConvertMasterServer, out io.Writer, wd string) error {
 	mux := newMuxedStream(stream, out)
-	cmd := execCommand("")
+
+	path := filepath.Join(c.Target.BinDir, "pg_upgrade")
+	cmd := execCommand(path,
+		"--old-bindir", c.Source.BinDir,
+		"--old-datadir", c.Source.MasterDataDir(),
+		"--old-port", strconv.Itoa(c.Source.MasterPort()),
+		"--new-bindir", c.Target.BinDir,
+		"--new-datadir", c.Target.MasterDataDir(),
+		"--new-port", strconv.Itoa(c.Target.MasterPort()),
+		"--mode=dispatcher",
+	)
 
 	cmd.Stdout = mux.NewStreamWriter(idl.Chunk_STDOUT)
 	cmd.Stderr = mux.NewStreamWriter(idl.Chunk_STDERR)
+	cmd.Dir = wd
+
+	// Explicitly clear the child environment. pg_upgrade shouldn't need things
+	// like PATH, and PGPORT et al are explicitly forbidden to be set.
+	// TODO: do we need LD_LIBRARY_PATH?
+	cmd.Env = []string{}
 
 	return cmd.Run()
 }
-
-/*
-func (h *Hub) ConvertMaster() error {
-	pathToUpgradeWD := utils.MasterPGUpgradeDirectory(h.conf.StateDir)
-	err := utils.System.MkdirAll(pathToUpgradeWD, 0700)
-	if err != nil {
-		return errors.Wrapf(err, "mkdir %s failed", pathToUpgradeWD)
-	}
-
-	pgUpgradeCmd := fmt.Sprintf("source %s; cd %s; unset PGHOST; unset PGPORT; "+
-		"%s --old-bindir=%s --old-datadir=%s --old-port=%d "+
-		"--new-bindir=%s --new-datadir=%s --new-port=%d --mode=dispatcher",
-		filepath.Join(h.target.BinDir, "..", "greenplum_path.sh"),
-		pathToUpgradeWD,
-		filepath.Join(h.target.BinDir, "pg_upgrade"),
-		h.source.BinDir,
-		h.source.MasterDataDir(),
-		h.source.MasterPort(),
-		h.target.BinDir,
-		h.target.MasterDataDir(),
-		h.target.MasterPort())
-
-	gplog.Info("Convert Master upgrade command: %#v", pgUpgradeCmd)
-
-	output, err := h.source.Executor.ExecuteLocalCommand(pgUpgradeCmd)
-	if err != nil {
-		gplog.Error("pg_upgrade failed to start: %s", output)
-		return errors.Wrapf(err, "pg_upgrade on master segment failed")
-	}
-
-	return nil
-}
-*/
