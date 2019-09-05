@@ -17,14 +17,25 @@ func NewUpgrader(client idl.CliToHubClient) *Upgrader {
 }
 
 func (u *Upgrader) ConvertMaster() error {
-	_, err := u.client.UpgradeConvertMaster(context.Background(), &idl.UpgradeConvertMasterRequest{})
+	stream, err := u.client.UpgradeConvertMaster(context.Background(), &idl.UpgradeConvertMasterRequest{})
 	if err != nil {
 		// TODO: Change the logging message?
 		gplog.Error("ERROR - Unable to connect to hub")
 		return err
 	}
 
-	gplog.Info("Kicked off pg_upgrade request.")
+	for chunk, err := stream.Recv(); err == nil {
+		if chunk.Type == Chunk_STDOUT {
+			os.Stdout.Write(chunk.Buffer)
+		} else if chunk.Type == Chunk_STDERR {
+			os.Stderr.Write(chunk.Buffer)
+		}
+	}
+
+	if err != io.EOF {
+		return err
+	}
+
 	return nil
 }
 
