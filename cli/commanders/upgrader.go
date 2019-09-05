@@ -2,6 +2,8 @@ package commanders
 
 import (
 	"context"
+	"io"
+	"os"
 
 	"github.com/greenplum-db/gpupgrade/idl"
 
@@ -24,10 +26,15 @@ func (u *Upgrader) ConvertMaster() error {
 		return err
 	}
 
-	for chunk, err := stream.Recv(); err == nil {
-		if chunk.Type == Chunk_STDOUT {
+	for {
+		var chunk *idl.Chunk
+		chunk, err = stream.Recv()
+		if err != nil {
+			break
+		}
+		if chunk.Type == idl.Chunk_STDOUT {
 			os.Stdout.Write(chunk.Buffer)
-		} else if chunk.Type == Chunk_STDERR {
+		} else if chunk.Type == idl.Chunk_STDERR {
 			os.Stderr.Write(chunk.Buffer)
 		}
 	}
