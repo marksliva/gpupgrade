@@ -51,7 +51,3 @@ delete_cluster() {
     # data directory to segments with "file exists".
     rm -rf "${datadir}"/*_upgrade
 }
-
-is_process_running() {
-    ps -ef | grep -wGc "$1"
-}

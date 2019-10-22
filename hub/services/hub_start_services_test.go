@@ -9,15 +9,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	as "github.com/greenplum-db/gpupgrade/agent/services"
 	"github.com/greenplum-db/gpupgrade/idl"
 	"github.com/hashicorp/go-multierror"
-
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 
-	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpupgrade/hub/services"
 	"github.com/greenplum-db/gpupgrade/testutils/exectest"
 )
@@ -38,28 +37,23 @@ func init() {
 }
 
 func TestRestartAgent(t *testing.T) {
-	hasServerStarted := make(chan bool, 1)
+	testhelper.SetupTestLogger()
+
 	listener := bufconn.Listen(1024 * 1024)
 	agentServer := grpc.NewServer()
 	//defer agentServer.Stop() // TODO: why does this hang
 
 	idl.RegisterAgentServer(agentServer, &as.AgentServer{})
 	go func() {
-		hasServerStarted <- true
 		if err := agentServer.Serve(listener); err != nil {
 			log.Fatalf("Server exited with error: %v", err)
 		}
 	}()
 
-	<-hasServerStarted
-	// TODO: how do we know if the agentServer is actually ready to listen here
-
-	ctx := context.Background()
-
 	hostnames := []string{"host1", "host2"}
 	port := 6416
-	stateDir := "/tmp/.gpupgrade"
-	testhelper.SetupTestLogger()
+	stateDir := "/not/existent/directory"
+	ctx := context.Background()
 
 	services.SetExecCommand(exectest.NewCommand(gpupgrade_agent))
 	defer services.ResetExecCommand()
