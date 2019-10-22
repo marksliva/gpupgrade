@@ -5,12 +5,14 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/net/context"
+	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 
@@ -39,7 +41,7 @@ func TestRestartAgent(t *testing.T) {
 	testhelper.SetupTestLogger()
 	listener := bufconn.Listen(1024 * 1024)
 	agentServer := grpc.NewServer()
-	defer agentServer.Stop() // TODO: why does this hang
+	defer agentServer.Stop()
 
 	idl.RegisterAgentServer(agentServer, &as.AgentServer{})
 	go func() {
@@ -109,15 +111,15 @@ func TestRestartAgent(t *testing.T) {
 			t.Errorf("expected restart agents to fail")
 		}
 
-		expectedAgentErrMsg := "exit status 1"
 		if merr, ok := err.(*multierror.Error); ok {
 			if merr.Len() != 2 {
 				t.Errorf("expected 2 errors, got %d", merr.Len())
 			}
 
+			var exitErr *exec.ExitError
 			for _, err := range merr.WrappedErrors() {
-				if err.Error() != expectedAgentErrMsg {
-					t.Errorf("expected agent error message: %s got: %s", expectedAgentErrMsg, err.Error())
+				if !xerrors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
+					t.Errorf("expected exit code: 1 but got: %#v", err)
 				}
 			}
 		}
