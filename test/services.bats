@@ -17,18 +17,17 @@ setup() {
 }
 
 teardown() {
-    # XXX Beware, BATS_TEST_SKIPPED is not a documented export.
-    if [ -z "${BATS_TEST_SKIPPED}" ]; then
-        gpupgrade kill-services
-        rm -r "$STATE_DIR"
-    fi
+    skip_if_no_gpdb
+
+    gpupgrade kill-services
+    rm -r "$STATE_DIR"
 }
 
 process_is_running() {
     ps -ef | grep -wGc "$1"
 }
 
-@test "gpupgrade stop-services actually stops hub and agents" {
+@test "kill-services actually stops hub and agents" {
     # check that hub and agent are up
     process_is_running "[g]pupgrade_hub"
     process_is_running "[g]pupgrade_agent"
@@ -39,11 +38,31 @@ process_is_running() {
     # make sure that they are down
     ! process_is_running "[g]pupgrade_hub"
     ! process_is_running "[g]pupgrade_agent"
+}
 
+@test "kill-services can be run multiple times without issue " {
+    gpupgrade kill-services
     gpupgrade kill-services
 }
 
-@test "gpupgrade stop-services can be run multiple times without issue " {
+@test "restart-services actually starts hub and agents" {
     gpupgrade kill-services
-    gpupgrade kill-services
+
+    # make sure that all services are down
+    ! process_is_running "[g]pupgrade_hub"
+    ! process_is_running "[g]pupgrade_agent"
+
+    gpupgrade restart-services
+
+    # check that hub and agent are up
+    process_is_running "[g]pupgrade_hub"
+    process_is_running "[g]pupgrade_agent"
+}
+
+@test "restart-services can be run even if services are already started" {
+    # we rely on the services' being up from setup
+    gpupgrade restart-services
+
+    process_is_running "[g]pupgrade_hub"
+    process_is_running "[g]pupgrade_agent"
 }
