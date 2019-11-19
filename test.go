@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
-	"bufio"
-	"bytes"
 	"regexp"
 )
 
@@ -18,7 +18,7 @@ func main() {
 		"COMMENT ON EXTENSION plpgsql IS",
 		"ALTER DATABASE postgres SET gp_use_legacy_hashops TO",
 		"COMMENT ON DATABASE postgres IS",
-		//"Name: EXTENSION plpgsql; Type: COMMENT;",
+		"Name: EXTENSION plpgsql; Type: COMMENT;",
 		"foobar",
 		"does not matter...",
 	}
@@ -45,6 +45,7 @@ func main() {
 	}
 	reader := bufio.NewReader(inFile)
 	writer := bufio.NewWriter(outFile)
+	defer writer.Flush()
 
 	counter := 0
 	for {
