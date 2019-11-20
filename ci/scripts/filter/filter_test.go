@@ -70,7 +70,43 @@ RESET allow_system_table_mods;
 		expected := `
 GRANT ALL ON DATABASE template1 TO gpadmin;
 
+
 RESET allow_system_table_mods;
+`
+		if out.String() != expected {
+			t.Errorf("wrote %q want %q", out.String(), expected)
+			t.Logf("actual (expanded): %s", out.String())
+			t.Logf("expected (expanded): %s", expected)
+		}
+	})
+
+	t.Run("keeps trailing comment blocks", func(t *testing.T) {
+		var in, out bytes.Buffer
+
+		in.WriteString(`
+
+--
+-- Greenplum Database database dump complete
+--
+
+--
+-- PostgreSQL database cluster dump complete
+--
+
+`)
+
+		main.Filter(&in, &out)
+
+		expected := `
+
+--
+-- Greenplum Database database dump complete
+--
+
+--
+-- PostgreSQL database cluster dump complete
+--
+
 `
 		if out.String() != expected {
 			t.Errorf("wrote %q want %q", out.String(), expected)

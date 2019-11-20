@@ -47,16 +47,10 @@ func Filter(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 
 	var buf []string      // lines buffered for look-ahead
-	var discardEmpty bool // should we discard the next empty line?
 
 nextline:
 	for scanner.Scan() {
 		line := scanner.Text()
-
-		if discardEmpty && len(line) == 0 {
-			discardEmpty = false
-			continue nextline
-		}
 
 		for _, r := range lineRegexes {
 			if r.MatchString(line) {
@@ -73,10 +67,8 @@ nextline:
 
 		for _, r := range blockRegexes {
 			if r.MatchString(line) {
-				// Discard this line, any buffered comment block, and any blank
-				// line directly after this block.
+				// Discard this line and any buffered comment block
 				buf = buf[:0]
-				discardEmpty = true
 				continue nextline
 			}
 		}
@@ -94,13 +86,11 @@ nextline:
 		log.Fatalf("scanning stdin: %+v", scanner.Err())
 	}
 
-	/*
-		// Flush and empty our buffer.
-		if len(buf) > 0 {
-			write(out, buf...)
-			buf = buf[:0]
-		}
-	*/
+	// Flush and empty our buffer.
+	if len(buf) > 0 {
+		write(out, buf...)
+		buf = buf[:0]
+	}
 }
 
 func main() {
