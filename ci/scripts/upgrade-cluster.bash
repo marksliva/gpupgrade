@@ -138,8 +138,12 @@ time ssh mdw GPHOME_OLD="${GPHOME_OLD}" GPHOME_NEW="${GPHOME_NEW}" bash <<"EOF"
 
         echo "Comparing dumps at ${old_dump} and ${new_dump}..."
 
+        go build ./ci/scripts/filter
+        scp ./filter mdw:/tmp/filter
         ssh -n mdw "
-            diff -U3 --speed-large-files --ignore-space-change '$old_dump' '$new_dump'
+            /tmp/filter < '$new_dump' > '$new_dump.filtered'
+            patch -R '$new_dump.filtered' ./ci/scripts/filter/acceptable_diff
+            diff -U3 --speed-large-files --ignore-space-change --ignore-blank-lines '$old_dump' '$new_dump.filtered'
         "
     }
 
