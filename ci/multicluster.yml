@@ -253,7 +253,7 @@ jobs:
       - put: terraform-1
         params:
           action: destroy
-          env_name_file: terraform/name
+          env_name_file: terraform-1/name
           terraform_source: ccp_src/google/
           vars:
             aws_instance-node-instance_type: t2.micro #t2.micro is ignored in destroy, but aws_instance-node-instance_type is required.
@@ -263,7 +263,7 @@ jobs:
       - put: terraform-2
         params:
           action: destroy
-          env_name_file: terraform/name
+          env_name_file: terraform-2/name
           terraform_source: ccp_src/google/
           vars:
             aws_instance-node-instance_type: t2.micro #t2.micro is ignored in destroy, but aws_instance-node-instance_type is required.
