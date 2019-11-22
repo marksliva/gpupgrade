@@ -1,0 +1,272 @@
+---
+resource_types:
+- name: gcs
+  type: docker-image
+  source:
+    repository: frodenas/gcs-resource
+
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+- name: terraform
+  type: docker-image
+  source:
+    repository: ljfranklin/terraform-resource
+    tag: 0.11.14
+
+resources:
+- name: bin_gpdb6_centos6
+  type: gcs
+  source:
+    bucket: {{gcs-bucket}}
+    json_key: {{concourse-gcs-resources-service-account-key}}
+    regexp: server/published/gpdb6/server-rc-(.*)-rhel6_x86_64.debug.tar.gz
+
+- name: ccp_src
+  type: git
+  source:
+    branch: {{ccp-git-branch}}
+    private_key: {{ccp-git-key}}
+    uri: {{ccp-git-remote}}
+
+- name: terraform-1
+  type: terraform
+  source:
+    env:
+      AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+      AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+      GOOGLE_CREDENTIALS: {{google-service-account-key}}
+    vars:
+      project_id: {{google-project-id}}
+    storage:
+      access_key_id: {{tf-machine-access-key-id}}
+      secret_access_key: {{tf-machine-secret-access-key}}
+      region_name: {{aws-region}}
+      # This is not parameterized, on purpose. All tfstates will go to this spot,
+      # and different teams will place there clusters' tfstate files under different paths
+      bucket: gpdb5-pipeline-dynamic-terraform
+      bucket_path: clusters-google/
+
+- name: terraform-2
+  type: terraform
+  source:
+    env:
+      AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+      AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+      GOOGLE_CREDENTIALS: {{google-service-account-key}}
+    vars:
+      project_id: {{google-project-id}}
+    storage:
+      access_key_id: {{tf-machine-access-key-id}}
+      secret_access_key: {{tf-machine-secret-access-key}}
+      region_name: {{aws-region}}
+      # This is not parameterized, on purpose. All tfstates will go to this spot,
+      # and different teams will place there clusters' tfstate files under different paths
+      bucket: gpdb5-pipeline-dynamic-terraform
+      bucket_path: clusters-google/
+
+anchors:
+  - &ccp_destroy
+    put: terraform
+    params:
+      action: destroy
+      env_name_file: terraform/name
+      terraform_source: ccp_src/google/
+      vars:
+        aws_instance-node-instance_type: t2.micro #t2.micro is ignored in destroy, but aws_instance-node-instance_type is required.
+        aws_ebs_volume_type: standard
+    get_params:
+      action: destroy
+
+  - &set_failed
+
+  - &slack_alert
+    do:
+      - put: slack-alert
+        params:
+          text: |
+            Hey team, <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|gpupgrade/$BUILD_JOB_NAME> failed.
+
+jobs:
+- name: multicluster
+  plan:
+  - in_parallel:
+    - get: bin_gpdb6
+      resource: bin_gpdb6_centos6
+    - get: ccp_src
+  - task: generate-ssh-keys
+    config:
+      platform: linux
+      outputs:
+      - name: ssh-extra-key
+      image_resource:
+        type: docker-image
+        source:
+          repository: centos
+          tag: '6'
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          yum install -y -d1 openssh openssh-clients
+          ssh-keygen -b 4096 -t rsa -f ssh-extra-key/key -N "" -C ""
+          openssl rsa -in ssh-extra-key/key -pubout -out ssh-extra-key/key.pem
+          sed -i 's/*//;s/ *$//' ssh-extra-key/key.pub
+  - in_parallel:
+    - do:
+      - put: terraform-1
+        params:
+          action: create
+          delete_on_failure: true
+          generate_random_name: true
+          terraform_source: ccp_src/google/
+          vars:
+            instance_type: n1-standard-2
+            number_of_nodes: 3
+            PLATFORM: centos6
+            cluster_suffix: '-1'
+            custom_ssh_key: "/tmp/build/put/ssh-extra-key/key"
+      - task: gen_cluster_1
+        file: ccp_src/ci/tasks/gen_cluster.yml
+        params:
+          AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+          AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+          AWS_DEFAULT_REGION: {{aws-region}}
+          BUCKET_PATH: clusters-google/
+          BUCKET_NAME: {{tf-bucket-name}}
+          CLOUD_PROVIDER: google
+          PLATFORM: centos6
+        input_mapping:
+          gpdb_binary: bin_gpdb6
+          terraform: terraform-1
+        output_mapping:
+          cluster_env_files: cluster-1
+      - task: gpinitsystem-1
+        file: ccp_src/ci/tasks/gpinitsystem.yml
+        input_mapping:
+          cluster_env_files: cluster-1
+        output_mapping:
+          cluster_env_files: cluster-1
+    - do:
+      - put: terraform-2
+        params:
+          action: create
+          delete_on_failure: true
+          generate_random_name: true
+          terraform_source: ccp_src/google/
+          vars:
+            instance_type: n1-standard-2
+            number_of_nodes: 3
+            PLATFORM: centos6
+            cluster_suffix: '-2'
+            custom_ssh_key: "/tmp/build/put/ssh-extra-key/key"
+            standby_master: true
+      - task: gen_cluster_2
+        file: ccp_src/ci/tasks/gen_cluster.yml
+        params:
+          AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+          AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+          AWS_DEFAULT_REGION: {{aws-region}}
+          BUCKET_PATH: clusters-google/
+          BUCKET_NAME: {{tf-bucket-name}}
+          CLOUD_PROVIDER: google
+          PLATFORM: centos6
+        input_mapping:
+          gpdb_binary: bin_gpdb6
+          terraform: terraform-2
+        output_mapping:
+          cluster_env_files: cluster-2
+      - task: gpinitsystem-2
+        file: ccp_src/ci/tasks/gpinitsystem.yml
+        input_mapping:
+          cluster_env_files: cluster-2
+        output_mapping:
+          cluster_env_files: cluster-2
+  - task: do-nothing
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: centos
+          tag: '6'
+      inputs:
+      - name: ccp_src
+      - name: cluster-1
+      - name: cluster-2
+      run:
+        path: bash
+  ensure:
+    do:
+    - in_parallel:
+      - task: on_failure_set_failed-1
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: pivotaldata/ccp
+              tag: "7"
+          inputs:
+            - name: ccp_src
+            - name: terraform-1
+          run:
+            path: 'ccp_src/google/ccp_failed_test.sh'
+          params:
+            GOOGLE_CREDENTIALS: {{google-service-account-key}}
+            GOOGLE_PROJECT_ID: {{google-project-id}}
+            GOOGLE_ZONE: {{google-zone}}
+            GOOGLE_SERVICE_ACCOUNT: {{google-service-account}}
+            AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+            AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+            AWS_DEFAULT_REGION: {{tf-machine-region}}
+            BUCKET_PATH: clusters-google/
+            BUCKET_NAME: {{tf-bucket-name}}
+      - task: on_failure_set_failed-2
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: pivotaldata/ccp
+              tag: "7"
+          inputs:
+            - name: ccp_src
+            - name: terraform-2
+          run:
+            path: 'ccp_src/google/ccp_failed_test.sh'
+          params:
+            GOOGLE_CREDENTIALS: {{google-service-account-key}}
+            GOOGLE_PROJECT_ID: {{google-project-id}}
+            GOOGLE_ZONE: {{google-zone}}
+            GOOGLE_SERVICE_ACCOUNT: {{google-service-account}}
+            AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+            AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+            AWS_DEFAULT_REGION: {{tf-machine-region}}
+            BUCKET_PATH: clusters-google/
+            BUCKET_NAME: {{tf-bucket-name}}
+    - in_parallel:
+      - put: terraform-1
+        params:
+          action: destroy
+          env_name_file: terraform/name
+          terraform_source: ccp_src/google/
+          vars:
+            aws_instance-node-instance_type: t2.micro #t2.micro is ignored in destroy, but aws_instance-node-instance_type is required.
+            aws_ebs_volume_type: standard
+        get_params:
+          action: destroy
+      - put: terraform-2
+        params:
+          action: destroy
+          env_name_file: terraform/name
+          terraform_source: ccp_src/google/
+          vars:
+            aws_instance-node-instance_type: t2.micro #t2.micro is ignored in destroy, but aws_instance-node-instance_type is required.
+            aws_ebs_volume_type: standard
+        get_params:
+          action: destroy
