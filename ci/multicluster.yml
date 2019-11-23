@@ -128,6 +128,7 @@ jobs:
             instance_type: n1-standard-2
             number_of_nodes: 3
             PLATFORM: centos6
+            subnet: dynamic
             cluster_suffix: '-1'
             custom_ssh_key: "/tmp/build/put/ssh-extra-key/key"
       - task: gen_cluster_1
@@ -145,12 +146,6 @@ jobs:
           terraform: terraform-1
         output_mapping:
           cluster_env_files: cluster-1
-      - task: gpinitsystem-1
-        file: ccp_src/ci/tasks/gpinitsystem.yml
-        input_mapping:
-          cluster_env_files: cluster-1
-        output_mapping:
-          cluster_env_files: cluster-1
     - do:
       - put: terraform-2
         params:
@@ -162,6 +157,7 @@ jobs:
             instance_type: n1-standard-2
             number_of_nodes: 3
             PLATFORM: centos6
+            subnet: toolshed
             cluster_suffix: '-2'
             custom_ssh_key: "/tmp/build/put/ssh-extra-key/key"
             standby_master: true
@@ -178,12 +174,6 @@ jobs:
         input_mapping:
           gpdb_binary: bin_gpdb6
           terraform: terraform-2
-        output_mapping:
-          cluster_env_files: cluster-2
-      - task: gpinitsystem-2
-        file: ccp_src/ci/tasks/gpinitsystem.yml
-        input_mapping:
-          cluster_env_files: cluster-2
         output_mapping:
           cluster_env_files: cluster-2
   - task: exchange_keys
@@ -208,15 +198,17 @@ jobs:
           opts="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i cluster-1/private_key.pem"
           while read -r ip host extra; do
               scp $opts cluster-2/.ssh/*private_key.pem gpadmin@"$ip":~/.ssh/
-              ssh $opts -- bash -c "cat - >> ~/.ssh/config" < cluster-2/.ssh/config
-              ssh $opts -- bash -c "cat - >> ~/.ssh/known_hosts" < cluster-2/.ssh/known_hosts
+              ssh $opts gpadmin@"$ip" -- bash -c "cat - >> ~/.ssh/config && chmod 0600 ~/.ssh/config" < cluster-2/.ssh/config
+              ssh $opts centos@"$ip" -- "sudo bash -c 'cat - >> /etc/hosts'" < cluster-2/etc_hostfile
+              ssh $opts gpadmin@"$ip" -- bash -c "cat - >> ~/.ssh/known_hosts" < cluster-2/.ssh/known_hosts
           done < cluster-1/etc_hostfile
 
           opts="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i cluster-2/private_key.pem"
           while read -r ip host extra; do
               scp $opts cluster-1/.ssh/*private_key.pem gpadmin@"$ip":~/.ssh/
-              ssh $opts -- bash -c "cat - >> ~/.ssh/config" < cluster-1/.ssh/config
-              ssh $opts -- bash -c "cat - >> ~/.ssh/known_hosts" < cluster-1/.ssh/known_hosts
+              ssh $opts gpadmin@"$ip" -- bash -c "cat - >> ~/.ssh/config && chmod 0600 ~/.ssh/config" < cluster-1/.ssh/config
+              ssh $opts centos@"$ip" -- "sudo bash -c 'cat - >> /etc/hosts'" < cluster-1/etc_hostfile
+              ssh $opts gpadmin@"$ip" -- bash -c "cat - >> ~/.ssh/known_hosts" < cluster-1/.ssh/known_hosts
           done < cluster-2/etc_hostfile
 
   - task: do-nothing
