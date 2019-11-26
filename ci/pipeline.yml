@@ -21,8 +21,8 @@ resources:
 - name: gpupgrade_src
   type: git
   source:
-    uri: {{gpupgrade-git-remote}}
-    branch: {{gpupgrade-git-branch}}
+    uri: ((gpupgrade-git-remote))
+    branch: ((gpupgrade-git-branch))
 
 - name: gpdb6_src
   type: git
@@ -30,21 +30,25 @@ resources:
     uri: https://github.com/greenplum-db/gpdb
     branch: 6X_STABLE
 
-- name: bin_gpdb6_centos6
-  type: gcs
-  source:
-    bucket: {{gcs-bucket}}
-    json_key: {{concourse-gcs-resources-service-account-key}}
-    regexp: server/published/gpdb6/server-rc-(.*)-rhel6_x86_64.debug.tar.gz
-
-- name: bin_gpdb5_centos6
+{{range .SourceVersions}}
+- name: bin_gpdb{{.}}_centos6
   type: s3
   source:
-    access_key_id: {{bucket-access-key-id}}
-    bucket: {{gpdb-stable-builds-bucket-name}}
-    region_name: {{aws-region}}
-    secret_access_key: {{bucket-secret-access-key}}
-    versioned_file: release_candidates/bin_gpdb_centos6/gpdb5/bin_gpdb.tar.gz
+    access_key_id: ((bucket-access-key-id))
+    bucket: ((gpdb-stable-builds-bucket-name))
+    region_name: ((aws-region))
+    secret_access_key: ((bucket-secret-access-key))
+    versioned_file: release_candidates/bin_gpdb_centos6/gpdb{{.}}/bin_gpdb.tar.gz
+{{end}}
+
+{{range .TargetVersions}}
+- name: bin_gpdb{{.}}_centos6
+  type: gcs
+  source:
+    bucket: ((gcs-bucket))
+    json_key: ((concourse-gcs-resources-service-account-key))
+    regexp: server/published/gpdb6/server-rc-{{.}}(.*)-rhel6_x86_64.debug.tar.gz
+{{end}}
 
 - name: bats
   type: git
@@ -56,28 +60,28 @@ resources:
 - name: slack-alert
   type: slack-notification
   source:
-    url: {{cm_webhook_url}}
+    url: ((cm_webhook_url))
 
 - name: ccp_src
   type: git
   source:
-    branch: {{ccp-git-branch}}
-    private_key: {{ccp-git-key}}
-    uri: {{ccp-git-remote}}
+    branch: ((ccp-git-branch))
+    private_key: ((ccp-git-key))
+    uri: ((ccp-git-remote))
 
 - name: terraform
   type: terraform
   source:
     env:
-      AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
-      AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
-      GOOGLE_CREDENTIALS: {{google-service-account-key}}
+      AWS_ACCESS_KEY_ID: ((tf-machine-access-key-id))
+      AWS_SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
+      GOOGLE_CREDENTIALS: ((google-service-account-key))
     vars:
-      project_id: {{google-project-id}}
+      project_id: ((google-project-id))
     storage:
-      access_key_id: {{tf-machine-access-key-id}}
-      secret_access_key: {{tf-machine-secret-access-key}}
-      region_name: {{aws-region}}
+      access_key_id: ((tf-machine-access-key-id))
+      secret_access_key: ((tf-machine-secret-access-key))
+      region_name: ((aws-region))
       # This is not parameterized, on purpose. All tfstates will go to this spot,
       # and different teams will place there clusters' tfstate files under different paths
       bucket: gpdb5-pipeline-dynamic-terraform
@@ -86,15 +90,15 @@ resources:
 - name: dump_gpdb6_icw_gporca_centos6
   type: gcs
   source:
-    bucket: {{gcs-bucket-intermediates}}
-    json_key: {{concourse-gcs-resources-service-account-key}}
+    bucket: ((gcs-bucket-intermediates))
+    json_key: ((concourse-gcs-resources-service-account-key))
     versioned_file: 6X_STABLE/icw_gporca_centos6_dump/dump.sql.xz
 
 - name: dump_gpdb5_simple
   type: gcs
   source:
-    bucket: {{gcs-bucket-intermediates}}
-    json_key: {{concourse-gcs-resources-service-account-key}}
+    bucket: ((gcs-bucket-intermediates))
+    json_key: ((concourse-gcs-resources-service-account-key))
     versioned_file: 5X_STABLE/simple_dump/dump.sql.xz
 
 anchors:
@@ -105,11 +109,11 @@ anchors:
     terraform_source: ccp_src/google/
 
   - &ccp_gen_cluster_default_params
-    AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
-    AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
-    AWS_DEFAULT_REGION: {{aws-region}}
+    AWS_ACCESS_KEY_ID: ((tf-machine-access-key-id))
+    AWS_SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
+    AWS_DEFAULT_REGION: ((aws-region))
     BUCKET_PATH: clusters-google/
-    BUCKET_NAME: {{tf-bucket-name}}
+    BUCKET_NAME: ((tf-bucket-name))
     CLOUD_PROVIDER: google
 
   - &ccp_destroy
@@ -140,15 +144,15 @@ anchors:
           run:
             path: 'ccp_src/google/ccp_failed_test.sh'
           params:
-            GOOGLE_CREDENTIALS: {{google-service-account-key}}
-            GOOGLE_PROJECT_ID: {{google-project-id}}
-            GOOGLE_ZONE: {{google-zone}}
-            GOOGLE_SERVICE_ACCOUNT: {{google-service-account}}
-            AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
-            AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
-            AWS_DEFAULT_REGION: {{tf-machine-region}}
+            GOOGLE_CREDENTIALS: ((google-service-account-key))
+            GOOGLE_PROJECT_ID: ((google-project-id))
+            GOOGLE_ZONE: ((google-zone))
+            GOOGLE_SERVICE_ACCOUNT: ((google-service-account))
+            AWS_ACCESS_KEY_ID: ((tf-machine-access-key-id))
+            AWS_SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
+            AWS_DEFAULT_REGION: ((tf-machine-region))
             BUCKET_PATH: clusters-google/
-            BUCKET_NAME: {{tf-bucket-name}}
+            BUCKET_NAME: ((tf-bucket-name))
 
   - &slack_alert
     do:
@@ -235,16 +239,18 @@ jobs:
   on_failure:
     <<: *slack_alert
 
-- name: 5-to-6
+
+{{range .CombinedVersions}}
+- name: {{.SourceVersion}}-to-{{.TargetVersion}}
   plan:
     - in_parallel:
         - get: gpupgrade_src
           trigger: true
         - get: bin_gpdb_old
-          resource: bin_gpdb5_centos6
+          resource: bin_gpdb{{.SourceVersion}}_centos6
           trigger: true
         - get: bin_gpdb_new
-          resource: bin_gpdb6_centos6
+          resource: bin_gpdb{{.TargetVersion}}_centos6
           trigger: true
         - get: ccp_src
         - get: sqldump
@@ -335,3 +341,4 @@ jobs:
 # todo: uncomment this once compare_dumps() is fixed
 #  on_failure:
 #    <<: *slack_alert
+{{end}}
