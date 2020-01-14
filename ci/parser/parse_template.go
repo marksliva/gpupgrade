@@ -21,7 +21,11 @@ import (
 )
 
 var sourceVersions = []string{"5"}
-var targetVersions = []string{"6.1.0"}
+var targetVersions = []string{
+	"6.1.0",
+	"6.2.1",
+	"6.3.0",
+}
 
 type VersionPair struct {
 	Source, Target string
