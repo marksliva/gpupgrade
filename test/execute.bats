@@ -22,11 +22,13 @@ teardown() {
     $PSQL postgres -c "drop table if exists test_linking;"
 
     gpupgrade kill-services
-    rm -r "$STATE_DIR"
 
-    if [ -n "$NEW_CLUSTER" ]; then
-        delete_cluster $NEW_CLUSTER
-    fi
+    echo "$STATE_DIR"
+#    rm -r "$STATE_DIR"
+#
+#    if [ -n "$NEW_CLUSTER" ]; then
+#        delete_cluster $NEW_CLUSTER
+#    fi
 
     for FUNCTION in "${TEARDOWN_FUNCTIONS[@]}"; do
         $FUNCTION
