@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("hub.ExecuteUpgradePrimariesSubStep()", func() {
+var _ = Describe("UpgradePrimaries", func() {
 	It("returns nil error, and agent receives only expected segmentConfig values", func() {
 		seg1 := target.Segments[0]
 		seg1.DataDir = filepath.Join(dir, "seg1_upgrade")
@@ -33,14 +33,29 @@ var _ = Describe("hub.ExecuteUpgradePrimariesSubStep()", func() {
 		sourceSeg2.Hostname = seg2.Hostname
 		source.Segments[1] = sourceSeg2
 
-		err := testHub.ConvertPrimaries(false)
+		err := testHub.UpgradePrimaries(false, "/some/cool/backupdir")
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(mockAgent.UpgradeConvertPrimarySegmentsRequest.SourceBinDir).To(Equal("/source/bindir"))
 		Expect(mockAgent.UpgradeConvertPrimarySegmentsRequest.TargetBinDir).To(Equal("/target/bindir"))
+		Expect(mockAgent.UpgradeConvertPrimarySegmentsRequest.MasterBackupDir).To(Equal("/some/cool/backupdir"))
 		Expect(mockAgent.UpgradeConvertPrimarySegmentsRequest.DataDirPairs).To(ConsistOf([]*idl.DataDirPair{
-			{SourceDataDir: filepath.Join(dir, "seg1"), TargetDataDir: filepath.Join(dir, "seg1_upgrade"), Content: 0, SourcePort: 25432, TargetPort: 27432, DBID: 2},
-			{SourceDataDir: filepath.Join(dir, "seg2"), TargetDataDir: filepath.Join(dir, "seg2_upgrade"), Content: 1, SourcePort: 25433, TargetPort: 27433, DBID: 3},
+			{
+				SourceDataDir: filepath.Join(dir, "seg1"),
+				TargetDataDir: filepath.Join(dir, "seg1_upgrade"),
+				Content:       0,
+				SourcePort:    25432,
+				TargetPort:    27432,
+				DBID:          2,
+			},
+			{
+				SourceDataDir: filepath.Join(dir, "seg2"),
+				TargetDataDir: filepath.Join(dir, "seg2_upgrade"),
+				Content:       1,
+				SourcePort:    25433,
+				TargetPort:    27433,
+				DBID:          3,
+			},
 		}))
 	})
 
@@ -52,7 +67,7 @@ var _ = Describe("hub.ExecuteUpgradePrimariesSubStep()", func() {
 			},
 		}
 
-		err := testHub.ConvertPrimaries(false)
+		err := testHub.UpgradePrimaries(false, "")
 		Expect(err).To(HaveOccurred())
 		Expect(mockAgent.NumberOfCalls()).To(Equal(0))
 	})
@@ -62,7 +77,7 @@ var _ = Describe("hub.ExecuteUpgradePrimariesSubStep()", func() {
 		differentSeg.Hostname = "localhost2"
 		target.Segments[0] = differentSeg
 
-		err := testHub.ConvertPrimaries(false)
+		err := testHub.UpgradePrimaries(false, "")
 		Expect(err).To(HaveOccurred())
 
 		Expect(mockAgent.NumberOfCalls()).To(Equal(0))
@@ -71,7 +86,7 @@ var _ = Describe("hub.ExecuteUpgradePrimariesSubStep()", func() {
 	It("returns an error if any upgrade primary call to any agent fails", func() {
 		mockAgent.Err <- errors.New("fail upgrade primary call")
 
-		err := testHub.ConvertPrimaries(false)
+		err := testHub.UpgradePrimaries(false, "")
 		Expect(err).To(HaveOccurred())
 
 		Expect(mockAgent.NumberOfCalls()).To(Equal(2))

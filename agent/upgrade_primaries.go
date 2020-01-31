@@ -22,7 +22,8 @@ var execCommand = exec.Command
 func (s *Server) UpgradePrimaries(ctx context.Context, request *idl.UpgradePrimariesRequest) (*idl.UpgradePrimariesReply, error) {
 	gplog.Info("agent starting %s", idl.Substep_UPGRADE_PRIMARIES)
 
-	err := UpgradePrimary(s.conf.StateDir, request)
+	err := UpgradePrimaries(s.conf.StateDir, request, &rsyncClient{})
+
 	return &idl.UpgradePrimariesReply{}, err
 }
 
@@ -32,11 +33,15 @@ type Segment struct {
 	WorkDir string // the pg_upgrade working directory, where logs are stored
 }
 
-func UpgradePrimary(stateDir string, request *idl.UpgradePrimariesRequest) error {
+type RsyncClient interface {
+	Copy(sourceDir, targetDir string)
+}
+
+func UpgradePrimaries(stateDir string, request *idl.UpgradePrimariesRequest, rsyncClient RsyncClient) error {
 	segments := make([]Segment, 0, len(request.DataDirPairs))
 
 	for _, dataPair := range request.DataDirPairs {
-		workdir := utils.SegmentPGUpgradeDirectory(stateDir, int(dataPair.Content))
+		workdir := upgrade.SegmentWorkingDirectory(stateDir, int(dataPair.Content))
 		err := utils.System.MkdirAll(workdir, 0700)
 		if err != nil {
 			return xerrors.Errorf("upgrading primaries: %w", err)
@@ -48,7 +53,8 @@ func UpgradePrimary(stateDir string, request *idl.UpgradePrimariesRequest) error
 		})
 	}
 
-	err := UpgradeSegments(segments, request)
+	err := upgradeSegments(segments, request, rsyncClient)
+
 	if err != nil {
 		return errors.Wrap(err, "failed to upgrade segments")
 	}
@@ -56,7 +62,7 @@ func UpgradePrimary(stateDir string, request *idl.UpgradePrimariesRequest) error
 	return nil
 }
 
-func UpgradeSegments(segments []Segment, request *idl.UpgradePrimariesRequest) (err error) {
+func upgradeSegments(segments []Segment, request *idl.UpgradePrimariesRequest, rsyncClient RsyncClient) (err error) {
 	host, err := os.Hostname()
 	if err != nil {
 		return err
@@ -66,6 +72,8 @@ func UpgradeSegments(segments []Segment, request *idl.UpgradePrimariesRequest) (
 	agentErrs := make(chan error, len(segments))
 
 	for _, segment := range segments {
+		rsyncClient.Copy(request.MasterBackupDir, segment.TargetDataDir)
+
 		dbid := int(segment.DBID)
 		segmentPair := upgrade.SegmentPair{
 			Source: &upgrade.Segment{request.SourceBinDir, segment.SourceDataDir, dbid, int(segment.SourcePort)},

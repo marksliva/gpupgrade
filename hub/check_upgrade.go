@@ -27,7 +27,7 @@ func (h *Hub) CheckUpgrade(stream step.OutStreams) error {
 	go func() {
 		defer wg.Done()
 
-		err := h.ConvertPrimaries(true)
+		err := h.UpgradePrimaries(true, "")
 		if err != nil {
 			checkErrs <- err
 		}

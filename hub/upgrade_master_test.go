@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/greenplum-db/gpupgrade/upgrade"
+
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"golang.org/x/xerrors"
 
@@ -171,7 +173,7 @@ func TestUpgradeMaster(t *testing.T) {
 			t.Errorf("returned error %+v", err)
 		}
 
-		expectedWD := utils.MasterPGUpgradeDirectory(tempDir)
+		expectedWD := upgrade.MasterWorkingDirectory(tempDir)
 		if createdWD != expectedWD {
 			t.Errorf("created working directory %q, want %q", createdWD, expectedWD)
 		}

@@ -2,6 +2,7 @@ package hub
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/hashicorp/go-multierror"
@@ -11,6 +12,8 @@ import (
 )
 
 func (h *Hub) Execute(request *idl.ExecuteRequest, stream idl.CliToHub_ExecuteServer) (err error) {
+	masterBackupDir := filepath.Join(h.StateDir, "master.bak")
+
 	s, err := BeginStep(h.StateDir, "execute", stream)
 	if err != nil {
 		return err
@@ -31,10 +34,12 @@ func (h *Hub) Execute(request *idl.ExecuteRequest, stream idl.CliToHub_ExecuteSe
 		return UpgradeMaster(h.Source, h.Target, stateDir, streams, false, h.UseLinkMode)
 	})
 
-	s.Run(idl.Substep_COPY_MASTER, h.CopyMasterDataDir)
+	s.Run(idl.Substep_COPY_MASTER, func(streams step.OutStreams) error {
+		return h.CopyMasterDataDir(streams, masterBackupDir)
+	})
 
 	s.Run(idl.Substep_UPGRADE_PRIMARIES, func(_ step.OutStreams) error {
-		return h.ConvertPrimaries(false)
+		return h.UpgradePrimaries(false, masterBackupDir)
 	})
 
 	s.Run(idl.Substep_START_TARGET_CLUSTER, func(streams step.OutStreams) error {

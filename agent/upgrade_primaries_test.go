@@ -13,7 +13,7 @@ import (
 )
 
 // Does nothing.
-func EmptyMain() {}
+func Success() {}
 
 // Prints the environment, one variable per line, in NAME=VALUE format.
 func EnvironmentMain() {
@@ -28,7 +28,7 @@ func FailedMain() {
 
 func init() {
 	exectest.RegisterMains(
-		EmptyMain,
+		Success,
 		EnvironmentMain,
 		FailedMain,
 	)
@@ -69,8 +69,14 @@ func TestUpgradePrimary(t *testing.T) {
 			Content:       1,
 			DBID:          2,
 		},
-		// TODO add a second pair when we can run multiple execCommand
-		// invocations in a single test
+		{
+			SourceDataDir: "/other/data/old",
+			TargetDataDir: "/other/data/new",
+			SourcePort:    99999,
+			TargetPort:    88888,
+			Content:       7,
+			DBID:          6,
+		},
 	}
 
 	// NOTE: we could choose to duplicate the upgrade.Run unit tests for all of
@@ -88,7 +94,7 @@ func TestUpgradePrimary(t *testing.T) {
 			CheckOnly:    true,
 			UseLinkMode:  false,
 		}
-		err := UpgradePrimary(tempDir, request)
+		err := UpgradePrimaries(tempDir, request, &mockRsyncClient{})
 		if err == nil {
 			t.Fatal("UpgradeSegments() returned no error")
 		}
@@ -113,7 +119,7 @@ func TestUpgradePrimary(t *testing.T) {
 			DataDirPairs: pairs,
 			CheckOnly:    false,
 			UseLinkMode:  false}
-		err := UpgradePrimary(tempDir, request)
+		err := UpgradePrimaries(tempDir, request, &mockRsyncClient{})
 		if err == nil {
 			t.Fatal("UpgradeSegments() returned no error")
 		}
@@ -126,5 +132,62 @@ func TestUpgradePrimary(t *testing.T) {
 			t.Errorf("error %q did not contain expected contents 'upgrade primary on host' and 'content 1'",
 				err.Error())
 		}
+	})
+
+	t.Run("it grabs a copy of the master backup directory before running upgrade", func(t *testing.T) {
+		execCommand = exectest.NewCommand(Success)
+		defer func() { execCommand = nil }()
+
+		rsyncClient := &mockRsyncClient{}
+
+		request := &idl.UpgradePrimariesRequest{
+			SourceBinDir:    "/old/bin",
+			TargetBinDir:    "/new/bin",
+			DataDirPairs:    pairs,
+			CheckOnly:       false,
+			UseLinkMode:     false,
+			MasterBackupDir: "/some/master/backup/dir",
+		}
+
+		UpgradePrimaries(tempDir, request, rsyncClient)
+
+		result := rsyncClient.rsyncCalls
+
+		if len(result) != len(pairs) {
+			t.Errorf("recieved %v calls to rsync, want %v",
+				len(result),
+				len(pairs))
+		}
+
+		requestedFirstPair := pairs[0]
+		firstRsyncCall := result[0]
+
+		if firstRsyncCall.sourceDir != "/some/master/backup/dir" {
+			t.Errorf("rsync source directory was %v, want %v",
+				firstRsyncCall.sourceDir,
+				"/some/master/backup/dir")
+		}
+
+		if firstRsyncCall.targetDir != requestedFirstPair.TargetDataDir {
+			t.Errorf("rsync target directory was %v, want %v",
+				firstRsyncCall.targetDir,
+				requestedFirstPair.TargetDataDir)
+		}
+	})
+}
+
+type mockRsyncClient struct {
+	rsyncCalls []RsyncData
+}
+
+type RsyncData struct {
+	sourceDir string
+	targetDir string
+}
+
+func (c *mockRsyncClient) Copy(sourceDir, targetDir string) {
+	c.rsyncCalls = append(c.rsyncCalls, RsyncData{
+		sourceDir: sourceDir,
+		targetDir: targetDir,
 	})
 }

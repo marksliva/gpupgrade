@@ -19,11 +19,10 @@ type Result struct {
 	err    error
 }
 
-func (h *Hub) CopyMasterDataDir(streams step.OutStreams) error {
+func (h *Hub) CopyMasterDataDir(streams step.OutStreams, destinationDir string) error {
 	// Make sure sourceDir ends with a trailing slash so that rsync will
 	// transfer the directory contents and not the directory itself.
 	sourceDir := filepath.Clean(h.Target.MasterDataDir()) + string(filepath.Separator)
-	destinationDirName := filepath.Join(h.StateDir, "master.bak")
 
 	/*
 	 * Copy the directory once per host.
@@ -44,7 +43,7 @@ func (h *Hub) CopyMasterDataDir(streams step.OutStreams) error {
 		go func() {
 			defer wg.Done()
 
-			dest := fmt.Sprintf("%s:%s", hostname, destinationDirName)
+			dest := fmt.Sprintf("%s:%s", hostname, destinationDir)
 			cmd := execCommand("rsync",
 				"--archive", "--compress", "--delete", "--stats",
 				sourceDir, dest)
