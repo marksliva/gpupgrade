@@ -1,19 +1,11 @@
 package agent
 
-import (
-	"os/exec"
-)
+import "github.com/greenplum-db/gp-common-go-libs/cluster"
 
 type rsyncClient struct{}
 
-func (c *rsyncClient) Copy(sourceDir, targetDir string) {
-	error := exec.
-		Command("rsync", "--archive", "--delete", sourceDir+"/", targetDir).
-		Run()
-
-	if error != nil {
-		print("nothing")
-	}
+func (rsyncClient) Copy(sourceDir, targetDir string) error {
+	return RestoreSegmentDataDir(targetDir, sourceDir, &cluster.GPDBExecutor{})
 }
 
 func NewRsyncClient() *rsyncClient {

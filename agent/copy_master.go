@@ -21,23 +21,7 @@ func (s *Server) CopyMaster(ctx context.Context, in *idl.CopyMasterRequest) (*id
 	datadirs := in.Datadirs
 	var err error
 	for _, segDataDir := range datadirs {
-		err = checkSegDirExists(segDataDir)
-		if err != nil {
-			break
-		}
-		err = backupSegDir(segDataDir)
-		if err != nil {
-			break
-		}
-		err = copyMasterDirOverSegment(s.executor, masterDir, segDataDir)
-		if err != nil {
-			break
-		}
-		err = restoreSegmentFiles(segDataDir)
-		if err != nil {
-			break
-		}
-		err = removeMasterFilesFromSegment(segDataDir)
+		err = RestoreSegmentDataDir(segDataDir, masterDir, s.executor)
 		if err != nil {
 			break
 		}
@@ -54,6 +38,26 @@ func (s *Server) CopyMaster(ctx context.Context, in *idl.CopyMasterRequest) (*id
 	}
 
 	return &idl.CopyMasterReply{}, err
+}
+
+func RestoreSegmentDataDir(segDataDir, masterDir string, executor cluster.Executor) error {
+	err := checkSegDirExists(segDataDir)
+	if err != nil {
+		return err
+	}
+	err = backupSegDir(segDataDir)
+	if err != nil {
+		return err
+	}
+	err = copyMasterDirOverSegment(executor, masterDir, segDataDir)
+	if err != nil {
+		return err
+	}
+	err = restoreSegmentFiles(segDataDir)
+	if err != nil {
+		return err
+	}
+	return removeMasterFilesFromSegment(segDataDir)
 }
 
 func checkSegDirExists(segDataDir string) error {

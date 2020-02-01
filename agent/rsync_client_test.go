@@ -27,10 +27,9 @@ func writeToFile(filepath string, contents []byte, t *testing.T) {
 func TestRsyncClient(t *testing.T) {
 	t.Run("it copies data from a source directory to a target directory", func(t *testing.T) {
 		sourceDir := getTempDir(t)
-		targetDir := getTempDir(t)
-
-		// Cleanup
 		defer os.RemoveAll(sourceDir)
+
+		targetDir := getTempDir(t)
 		defer os.RemoveAll(targetDir)
 
 		writeToFile(sourceDir+"/hi", []byte("hi"), t)
@@ -49,10 +48,9 @@ func TestRsyncClient(t *testing.T) {
 
 	t.Run("it removes files that existed in the target directory before the sync", func(t *testing.T) {
 		sourceDir := getTempDir(t)
-		targetDir := getTempDir(t)
-
-		// Cleanup
 		defer os.RemoveAll(sourceDir)
+
+		targetDir := getTempDir(t)
 		defer os.RemoveAll(targetDir)
 
 		writeToFile(targetDir+"/file-that-should-get-removed", []byte("goodbye"), t)
@@ -62,10 +60,28 @@ func TestRsyncClient(t *testing.T) {
 
 		targetContents, _ := ioutil.ReadFile(targetDir + "/file-that-should-get-removed")
 
+		// XXX this checks that the file is either empty or does not exist; we
+		// should just check for existence
 		if bytes.Compare(targetContents, []byte("")) != 0 {
 			t.Errorf("target directory file 'file-that-should-get-removed' should not exist, but contains %v",
 				string(targetContents))
 		}
 	})
 
+	// TODO: port functionality checks from agent/copy_master_test.go
+
+	t.Run("returns underlying copy errors", func(t *testing.T) {
+		targetDir := getTempDir(t)
+		defer os.RemoveAll(targetDir)
+
+		client := NewRsyncClient()
+		err := client.Copy("/does/not/exist", targetDir)
+
+		// XXX currently the error that comes back is heavily
+		// implementation-dependent; I'm choosing not to implement a sentinel at
+		// the moment.
+		if err == nil {
+			t.Errorf("returned nil error")
+		}
+	})
 }

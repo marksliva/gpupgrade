@@ -185,9 +185,11 @@ type RsyncData struct {
 	targetDir string
 }
 
-func (c *mockRsyncClient) Copy(sourceDir, targetDir string) {
+func (c *mockRsyncClient) Copy(sourceDir, targetDir string) error {
 	c.rsyncCalls = append(c.rsyncCalls, RsyncData{
 		sourceDir: sourceDir,
 		targetDir: targetDir,
 	})
+
+	return nil
 }

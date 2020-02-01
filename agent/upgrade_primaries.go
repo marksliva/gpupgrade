@@ -34,7 +34,7 @@ type Segment struct {
 }
 
 type RsyncClient interface {
-	Copy(sourceDir, targetDir string)
+	Copy(sourceDir, targetDir string) error
 }
 
 func UpgradePrimaries(stateDir string, request *idl.UpgradePrimariesRequest, rsyncClient RsyncClient) error {
@@ -72,6 +72,7 @@ func upgradeSegments(segments []Segment, request *idl.UpgradePrimariesRequest, r
 	agentErrs := make(chan error, len(segments))
 
 	for _, segment := range segments {
+		// XXX no error handling
 		rsyncClient.Copy(request.MasterBackupDir, segment.TargetDataDir)
 
 		dbid := int(segment.DBID)
