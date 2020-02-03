@@ -38,7 +38,9 @@ func TestCopyUtility(t *testing.T) {
 		writeToFile(sourceDir+"/hi", []byte("hi"), t)
 
 		copyUtility := agent.NewCopyUtility()
-		copyUtility.Copy(sourceDir, targetDir, []string{})
+		if err := copyUtility.Copy(sourceDir, targetDir, []string{}); err != nil {
+			t.Errorf("Copy() returned error %+v", err)
+		}
 
 		targetContents, _ := ioutil.ReadFile(filepath.Join(targetDir, "/hi"))
 
@@ -59,7 +61,9 @@ func TestCopyUtility(t *testing.T) {
 		writeToFile(targetDir+"/file-that-should-get-removed", []byte("goodbye"), t)
 
 		copyUtility := agent.NewCopyUtility()
-		copyUtility.Copy(sourceDir, targetDir, []string{})
+		if err := copyUtility.Copy(sourceDir, targetDir, []string{}); err != nil {
+			t.Errorf("Copy() returned error %+v", err)
+		}
 
 		targetContents, _ := ioutil.ReadFile(targetDir + "/file-that-should-get-removed")
 
@@ -81,7 +85,10 @@ func TestCopyUtility(t *testing.T) {
 		writeToFile(filepath.Join(sourceDir, "file-that-should-get-excluded"), []byte("goodbye"), t)
 
 		copyUtility := agent.NewCopyUtility()
-		copyUtility.Copy(sourceDir, targetDir, []string{"file-that-should-get-excluded"})
+		err := copyUtility.Copy(sourceDir, targetDir, []string{"file-that-should-get-excluded"})
+		if err != nil {
+			t.Errorf("Copy() returned error %+v", err)
+		}
 
 		targetContents, _ := ioutil.ReadFile(filepath.Join(targetDir, "file-that-should-get-excluded"))
 
@@ -103,7 +110,10 @@ func TestCopyUtility(t *testing.T) {
 		writeToFile(filepath.Join(targetDir, "another-file-that-should-get-ignored"), []byte("i'm still here"), t)
 
 		copyUtility := agent.NewCopyUtility()
-		copyUtility.Copy(sourceDir, targetDir, []string{"file-that-should-get-ignored", "another-file-that-should-get-ignored"})
+		err := copyUtility.Copy(sourceDir, targetDir, []string{"file-that-should-get-ignored", "another-file-that-should-get-ignored"})
+		if err != nil {
+			t.Errorf("Copy() returned error %+v", err)
+		}
 
 		_, statError := os.Stat(filepath.Join(targetDir, "file-that-should-get-ignored"))
 
