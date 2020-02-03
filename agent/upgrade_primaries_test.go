@@ -94,7 +94,7 @@ func TestUpgradePrimary(t *testing.T) {
 			CheckOnly:    true,
 			UseLinkMode:  false,
 		}
-		err := UpgradePrimaries(tempDir, request, &mockRsyncClient{})
+		err := UpgradePrimaries(tempDir, request, &spyMasterDataDirBackupTask{})
 		if err == nil {
 			t.Fatal("UpgradeSegments() returned no error")
 		}
@@ -119,7 +119,7 @@ func TestUpgradePrimary(t *testing.T) {
 			DataDirPairs: pairs,
 			CheckOnly:    false,
 			UseLinkMode:  false}
-		err := UpgradePrimaries(tempDir, request, &mockRsyncClient{})
+		err := UpgradePrimaries(tempDir, request, &spyMasterDataDirBackupTask{})
 		if err == nil {
 			t.Fatal("UpgradeSegments() returned no error")
 		}
@@ -138,13 +138,13 @@ func TestUpgradePrimary(t *testing.T) {
 		execCommand = exectest.NewCommand(Success)
 		defer func() { execCommand = nil }()
 
-		rsyncClient := &mockRsyncClient{}
+		spyTask := &spyMasterDataDirBackupTask{}
 		request := buildRequest(pairs)
 		request.CheckOnly = true
 
-		_ = UpgradePrimaries(tempDir, request, rsyncClient)
+		_ = UpgradePrimaries(tempDir, request, spyTask)
 
-		result := rsyncClient.rsyncCalls
+		result := spyTask.restoreCalls
 
 		if len(result) != 0 {
 			t.Errorf("recieved %v calls to rsync master data directory into segment data directory, want %v",
@@ -157,14 +157,14 @@ func TestUpgradePrimary(t *testing.T) {
 		execCommand = exectest.NewCommand(Success)
 		defer func() { execCommand = nil }()
 
-		rsyncClient := &mockRsyncClient{}
+		spyTask := &spyMasterDataDirBackupTask{}
 
 		request := buildRequest(pairs)
 		request.MasterBackupDir = "/some/master/backup/dir"
 
-		UpgradePrimaries(tempDir, request, rsyncClient)
+		UpgradePrimaries(tempDir, request, spyTask)
 
-		result := rsyncClient.rsyncCalls
+		result := spyTask.restoreCalls
 
 		if len(result) != len(pairs) {
 			t.Errorf("recieved %v calls to rsync, want %v",
@@ -173,17 +173,17 @@ func TestUpgradePrimary(t *testing.T) {
 		}
 
 		requestedFirstPair := pairs[0]
-		firstRsyncCall := result[0]
+		firstRestoreCall := result[0]
 
-		if firstRsyncCall.sourceDir != "/some/master/backup/dir" {
+		if firstRestoreCall.sourceDir != "/some/master/backup/dir" {
 			t.Errorf("rsync source directory was %v, want %v",
-				firstRsyncCall.sourceDir,
+				firstRestoreCall.sourceDir,
 				"/some/master/backup/dir")
 		}
 
-		if firstRsyncCall.targetDir != requestedFirstPair.TargetDataDir {
+		if firstRestoreCall.targetDir != requestedFirstPair.TargetDataDir {
 			t.Errorf("rsync target directory was %v, want %v",
-				firstRsyncCall.targetDir,
+				firstRestoreCall.targetDir,
 				requestedFirstPair.TargetDataDir)
 		}
 	})
@@ -200,17 +200,17 @@ func buildRequest(pairs []*idl.DataDirPair) *idl.UpgradePrimariesRequest {
 	}
 }
 
-type mockRsyncClient struct {
-	rsyncCalls []RsyncData
+type spyMasterDataDirBackupTask struct {
+	restoreCalls []RestoreRequest
 }
 
-type RsyncData struct {
+type RestoreRequest struct {
 	sourceDir string
 	targetDir string
 }
 
-func (c *mockRsyncClient) Copy(sourceDir, targetDir string) error {
-	c.rsyncCalls = append(c.rsyncCalls, RsyncData{
+func (c *spyMasterDataDirBackupTask) Restore(sourceDir, targetDir string) error {
+	c.restoreCalls = append(c.restoreCalls, RestoreRequest{
 		sourceDir: sourceDir,
 		targetDir: targetDir,
 	})

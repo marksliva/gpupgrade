@@ -22,7 +22,7 @@ var execCommand = exec.Command
 func (s *Server) UpgradePrimaries(ctx context.Context, request *idl.UpgradePrimariesRequest) (*idl.UpgradePrimariesReply, error) {
 	gplog.Info("agent starting %s", idl.Substep_UPGRADE_PRIMARIES)
 
-	err := UpgradePrimaries(s.conf.StateDir, request, &rsyncClient{})
+	err := UpgradePrimaries(s.conf.StateDir, request, NewMasterDataDirBackupTask())
 
 	return &idl.UpgradePrimariesReply{}, err
 }
@@ -33,11 +33,11 @@ type Segment struct {
 	WorkDir string // the pg_upgrade working directory, where logs are stored
 }
 
-type RsyncClient interface {
-	Copy(sourceDir, targetDir string) error
+type MasterDataDirBackupTask interface {
+	Restore(sourceDir, targetDir string) error
 }
 
-func UpgradePrimaries(stateDir string, request *idl.UpgradePrimariesRequest, rsyncClient RsyncClient) error {
+func UpgradePrimaries(stateDir string, request *idl.UpgradePrimariesRequest, masterDataDirBackupTask MasterDataDirBackupTask) error {
 	segments := make([]Segment, 0, len(request.DataDirPairs))
 
 	for _, dataPair := range request.DataDirPairs {
@@ -53,7 +53,7 @@ func UpgradePrimaries(stateDir string, request *idl.UpgradePrimariesRequest, rsy
 		})
 	}
 
-	err := upgradeSegments(segments, request, rsyncClient)
+	err := upgradeSegments(segments, request, masterDataDirBackupTask)
 
 	if err != nil {
 		return errors.Wrap(err, "failed to upgrade segments")
@@ -62,7 +62,7 @@ func UpgradePrimaries(stateDir string, request *idl.UpgradePrimariesRequest, rsy
 	return nil
 }
 
-func upgradeSegments(segments []Segment, request *idl.UpgradePrimariesRequest, rsyncClient RsyncClient) (err error) {
+func upgradeSegments(segments []Segment, request *idl.UpgradePrimariesRequest, masterDataDirBackupTask MasterDataDirBackupTask) (err error) {
 	host, err := os.Hostname()
 	if err != nil {
 		return err
@@ -74,7 +74,7 @@ func upgradeSegments(segments []Segment, request *idl.UpgradePrimariesRequest, r
 	for _, segment := range segments {
 		if !request.CheckOnly {
 			// XXX no error handling
-			rsyncClient.Copy(request.MasterBackupDir, segment.TargetDataDir)
+			masterDataDirBackupTask.Restore(request.MasterBackupDir, segment.TargetDataDir)
 		}
 
 		dbid := int(segment.DBID)

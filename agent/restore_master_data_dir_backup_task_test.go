@@ -24,7 +24,7 @@ func writeToFile(filepath string, contents []byte, t *testing.T) {
 	}
 }
 
-func TestRsyncClient(t *testing.T) {
+func TestMasterDataDirBackupTask(t *testing.T) {
 	t.Run("it copies data from a source directory to a target directory", func(t *testing.T) {
 		sourceDir := getTempDir(t)
 		defer os.RemoveAll(sourceDir)
@@ -34,8 +34,8 @@ func TestRsyncClient(t *testing.T) {
 
 		writeToFile(sourceDir+"/hi", []byte("hi"), t)
 
-		client := NewRsyncClient()
-		client.Copy(sourceDir, targetDir)
+		client := NewMasterDataDirBackupTask()
+		client.Restore(sourceDir, targetDir)
 
 		targetContents, _ := ioutil.ReadFile(targetDir + "/hi")
 
@@ -55,8 +55,8 @@ func TestRsyncClient(t *testing.T) {
 
 		writeToFile(targetDir+"/file-that-should-get-removed", []byte("goodbye"), t)
 
-		client := NewRsyncClient()
-		client.Copy(sourceDir, targetDir)
+		client := NewMasterDataDirBackupTask()
+		client.Restore(sourceDir, targetDir)
 
 		targetContents, _ := ioutil.ReadFile(targetDir + "/file-that-should-get-removed")
 
@@ -74,8 +74,8 @@ func TestRsyncClient(t *testing.T) {
 		targetDir := getTempDir(t)
 		defer os.RemoveAll(targetDir)
 
-		client := NewRsyncClient()
-		err := client.Copy("/does/not/exist", targetDir)
+		client := NewMasterDataDirBackupTask()
+		err := client.Restore("/does/not/exist", targetDir)
 
 		// XXX currently the error that comes back is heavily
 		// implementation-dependent; I'm choosing not to implement a sentinel at
