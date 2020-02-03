@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/pkg/errors"
+
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/hashicorp/go-multierror"
 
@@ -39,7 +41,19 @@ func (h *Hub) Execute(request *idl.ExecuteRequest, stream idl.CliToHub_ExecuteSe
 	})
 
 	s.Run(idl.Substep_UPGRADE_PRIMARIES, func(_ step.OutStreams) error {
-		return h.UpgradePrimaries(false, masterBackupDir)
+		agentConns, err := h.AgentConns()
+
+		if err != nil {
+			return errors.Wrap(err, "failed to connect to gpupgrade agent")
+		}
+
+		dataDirPair, err := h.GetDataDirPairs()
+
+		if err != nil {
+			return errors.Wrap(err, "failed to get old and new primary data directories")
+		}
+
+		return UpgradePrimaries(false, masterBackupDir, agentConns, dataDirPair, h.Source, h.Target, h.UseLinkMode)
 	})
 
 	s.Run(idl.Substep_START_TARGET_CLUSTER, func(streams step.OutStreams) error {
