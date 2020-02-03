@@ -72,8 +72,10 @@ func upgradeSegments(segments []Segment, request *idl.UpgradePrimariesRequest, r
 	agentErrs := make(chan error, len(segments))
 
 	for _, segment := range segments {
-		// XXX no error handling
-		rsyncClient.Copy(request.MasterBackupDir, segment.TargetDataDir)
+		if !request.CheckOnly {
+			// XXX no error handling
+			rsyncClient.Copy(request.MasterBackupDir, segment.TargetDataDir)
+		}
 
 		dbid := int(segment.DBID)
 		segmentPair := upgrade.SegmentPair{

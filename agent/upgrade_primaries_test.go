@@ -134,20 +134,33 @@ func TestUpgradePrimary(t *testing.T) {
 		}
 	})
 
+	t.Run("it does not perform a copy of the master backup directory when using check mode", func(t *testing.T) {
+		execCommand = exectest.NewCommand(Success)
+		defer func() { execCommand = nil }()
+
+		rsyncClient := &mockRsyncClient{}
+		request := buildRequest(pairs)
+		request.CheckOnly = true
+
+		_ = UpgradePrimaries(tempDir, request, rsyncClient)
+
+		result := rsyncClient.rsyncCalls
+
+		if len(result) != 0 {
+			t.Errorf("recieved %v calls to rsync master data directory into segment data directory, want %v",
+				len(result),
+				0)
+		}
+	})
+
 	t.Run("it grabs a copy of the master backup directory before running upgrade", func(t *testing.T) {
 		execCommand = exectest.NewCommand(Success)
 		defer func() { execCommand = nil }()
 
 		rsyncClient := &mockRsyncClient{}
 
-		request := &idl.UpgradePrimariesRequest{
-			SourceBinDir:    "/old/bin",
-			TargetBinDir:    "/new/bin",
-			DataDirPairs:    pairs,
-			CheckOnly:       false,
-			UseLinkMode:     false,
-			MasterBackupDir: "/some/master/backup/dir",
-		}
+		request := buildRequest(pairs)
+		request.MasterBackupDir = "/some/master/backup/dir"
 
 		UpgradePrimaries(tempDir, request, rsyncClient)
 
@@ -174,6 +187,17 @@ func TestUpgradePrimary(t *testing.T) {
 				requestedFirstPair.TargetDataDir)
 		}
 	})
+}
+
+func buildRequest(pairs []*idl.DataDirPair) *idl.UpgradePrimariesRequest {
+	return &idl.UpgradePrimariesRequest{
+		SourceBinDir:    "/old/bin",
+		TargetBinDir:    "/new/bin",
+		DataDirPairs:    pairs,
+		CheckOnly:       false,
+		UseLinkMode:     false,
+		MasterBackupDir: "/some/master/backup/dir",
+	}
 }
 
 type mockRsyncClient struct {
