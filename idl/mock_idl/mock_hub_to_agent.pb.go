@@ -95,26 +95,6 @@ func (mr *MockAgentClientMockRecorder) CreateSegmentDataDirectories(ctx, in inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSegmentDataDirectories", reflect.TypeOf((*MockAgentClient)(nil).CreateSegmentDataDirectories), varargs...)
 }
 
-// CopyMaster mocks base method
-func (m *MockAgentClient) CopyMaster(ctx context.Context, in *idl.CopyMasterRequest, opts ...grpc.CallOption) (*idl.CopyMasterReply, error) {
-	m.ctrl.T.Helper()
-	varargs := []interface{}{ctx, in}
-	for _, a := range opts {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "CopyMaster", varargs...)
-	ret0, _ := ret[0].(*idl.CopyMasterReply)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CopyMaster indicates an expected call of CopyMaster
-func (mr *MockAgentClientMockRecorder) CopyMaster(ctx, in interface{}, opts ...interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{ctx, in}, opts...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyMaster", reflect.TypeOf((*MockAgentClient)(nil).CopyMaster), varargs...)
-}
-
 // StopAgent mocks base method
 func (m *MockAgentClient) StopAgent(ctx context.Context, in *idl.StopAgentRequest, opts ...grpc.CallOption) (*idl.StopAgentReply, error) {
 	m.ctrl.T.Helper()
@@ -201,21 +181,6 @@ func (m *MockAgentServer) CreateSegmentDataDirectories(arg0 context.Context, arg
 func (mr *MockAgentServerMockRecorder) CreateSegmentDataDirectories(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSegmentDataDirectories", reflect.TypeOf((*MockAgentServer)(nil).CreateSegmentDataDirectories), arg0, arg1)
-}
-
-// CopyMaster mocks base method
-func (m *MockAgentServer) CopyMaster(arg0 context.Context, arg1 *idl.CopyMasterRequest) (*idl.CopyMasterReply, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CopyMaster", arg0, arg1)
-	ret0, _ := ret[0].(*idl.CopyMasterReply)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CopyMaster indicates an expected call of CopyMaster
-func (mr *MockAgentServerMockRecorder) CopyMaster(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyMaster", reflect.TypeOf((*MockAgentServer)(nil).CopyMaster), arg0, arg1)
 }
 
 // StopAgent mocks base method
