@@ -6,41 +6,41 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/greenplum-db/gpupgrade/idl"
+
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
-	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/pkg/errors"
 
-	"github.com/greenplum-db/gpupgrade/idl"
 	"github.com/greenplum-db/gpupgrade/utils"
 )
 
 func (s *Server) CopyMaster(ctx context.Context, in *idl.CopyMasterRequest) (*idl.CopyMasterReply, error) {
-	gplog.Info("got a request to copy the master data directory to the segment hosts from the hub")
-
-	masterDir := in.MasterDir
-	datadirs := in.Datadirs
-	var err error
-	for _, segDataDir := range datadirs {
-		err = RestoreSegmentDataDir(segDataDir, masterDir, s.executor)
-		if err != nil {
-			break
-		}
-	}
-	if err != nil {
-		gplog.Error(err.Error())
-		return &idl.CopyMasterReply{}, err
-	}
-
-	err = removeMasterDir(masterDir)
-	if err != nil {
-		gplog.Error(err.Error())
-		return &idl.CopyMasterReply{}, err
-	}
-
-	return &idl.CopyMasterReply{}, err
+	//	gplog.Info("got a request to copy the master data directory to the segment hosts from the hub")
+	//
+	//	masterDir := in.MasterDir
+	//	datadirs := in.Datadirs
+	//	var err error
+	//	for _, segDataDir := range datadirs {
+	//		err = RestoreSegmentDataDir(segDataDir, masterDir, s.executor)
+	//		if err != nil {
+	//			break
+	//		}
+	//	}
+	//	if err != nil {
+	//		gplog.Error(err.Error())
+	//		return &idl.CopyMasterReply{}, err
+	//	}
+	//
+	//	err = removeMasterDir(masterDir)
+	//	if err != nil {
+	//		gplog.Error(err.Error())
+	//		return &idl.CopyMasterReply{}, err
+	//	}
+	//
+	return &idl.CopyMasterReply{}, nil
 }
 
-func RestoreSegmentDataDir(segDataDir, masterDir string, executor cluster.Executor) error {
+func RestoreSegmentDataDir(segDataDir, masterDir string, excludedFiles []string, executor cluster.Executor) error {
 	err := checkSegDirExists(segDataDir)
 	if err != nil {
 		return err
@@ -57,7 +57,8 @@ func RestoreSegmentDataDir(segDataDir, masterDir string, executor cluster.Execut
 	if err != nil {
 		return err
 	}
-	return removeMasterFilesFromSegment(segDataDir)
+
+	return removeMasterFilesFromSegment(segDataDir, excludedFiles)
 }
 
 func checkSegDirExists(segDataDir string) error {
@@ -108,11 +109,11 @@ func restoreSegmentFiles(segDataDir string) error {
 }
 
 // Remove remaining master-specific files and directories
-func removeMasterFilesFromSegment(segDataDir string) error {
+func removeMasterFilesFromSegment(segDataDir string, excludedFiles []string) error {
 	// Files that are present on the master but the not the segments, where we want to delete them from the segments
 	// gppperfmon is a directory, so we'll call RemoveAll on these.
-	filesToRemove := []string{"gp_dbid", "gpssh.conf", "gpperfmon"}
-	for _, file := range filesToRemove {
+	for _, file := range excludedFiles {
+		fmt.Printf("should be removing this file: %v", file)
 		err := utils.System.RemoveAll(filepath.Join(segDataDir, file))
 		if err != nil {
 			return errors.Wrapf(err, "Could not remove %s from segment data directory", file)

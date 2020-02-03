@@ -19,10 +19,15 @@ import (
 // Allow exec.Command to be mocked out by exectest.NewCommand.
 var execCommand = exec.Command
 
+type CopyUtility interface {
+	Copy(sourceDir, targetDir string, excludedFiles []string) error
+}
+
 func (s *Server) UpgradePrimaries(ctx context.Context, request *idl.UpgradePrimariesRequest) (*idl.UpgradePrimariesReply, error) {
 	gplog.Info("agent starting %s", idl.Substep_UPGRADE_PRIMARIES)
 
-	err := UpgradePrimaries(s.conf.StateDir, request, NewMasterDataDirBackupTask())
+	task := NewMasterDataDirBackupTask(&copyUtility{}, excludedFilesRestoringBackup)
+	err := UpgradePrimaries(s.conf.StateDir, request, task)
 
 	return &idl.UpgradePrimariesReply{}, err
 }
@@ -34,7 +39,17 @@ type Segment struct {
 }
 
 type MasterDataDirBackupTask interface {
-	Restore(sourceDir, targetDir string) error
+	Restore(sourceDir string, targetDir string) error
+}
+
+var excludedFilesRestoringBackup = []string{
+	"internal.auto.conf",
+	"postgresql.conf",
+	"pg_hba.conf",
+	"postmaster.opts",
+	"gp_dbid",
+	"gpssh.conf",
+	"gpperfmon",
 }
 
 func UpgradePrimaries(stateDir string, request *idl.UpgradePrimariesRequest, masterDataDirBackupTask MasterDataDirBackupTask) error {
@@ -73,8 +88,10 @@ func upgradeSegments(segments []Segment, request *idl.UpgradePrimariesRequest, m
 
 	for _, segment := range segments {
 		if !request.CheckOnly {
-			// XXX no error handling
-			masterDataDirBackupTask.Restore(request.MasterBackupDir, segment.TargetDataDir)
+			masterDataDirBackupTask.Restore(
+				request.MasterBackupDir,
+				segment.TargetDataDir,
+			)
 		}
 
 		dbid := int(segment.DBID)

@@ -1,87 +1,71 @@
 package agent
 
 import (
-	"bytes"
-	"io/ioutil"
-	"os"
 	"testing"
 )
 
-func getTempDir(t *testing.T) string {
-	sourceDir, err := ioutil.TempDir("", "rsync-source")
-	if err != nil {
-		t.Fatalf("creating temporary directory: %+v", err)
-	}
+func TestNewMasterDataDirBackupTask(t *testing.T) {
 
-	return sourceDir
+	t.Run("it asks the copying utility to preserves some files", func(t *testing.T) {
+		copyUtility := MockCopyUtility()
+
+		task := NewMasterDataDirBackupTask(
+			copyUtility,
+			[]string{"foo.txt", "bar.txt"},
+		)
+
+		task.Restore("/some/source/dir", "/some/target/dir")
+
+		request := copyUtility.requests[0]
+
+		expectedSourceDir := "/some/source/dir"
+		if request.sourceDir != expectedSourceDir {
+			t.Errorf("wanted copy utility to recieve source dir as %v, got %v",
+				request.sourceDir,
+				expectedSourceDir)
+		}
+
+		expectedTargetDir := "/some/target/dir"
+		if request.targetDir != expectedTargetDir {
+			t.Errorf("wanted copy utility to recieve target dir as %v, got %v",
+				request.targetDir,
+				expectedTargetDir)
+		}
+
+		if request.excludedFiles[0] != "foo.txt" {
+			t.Errorf("wanted copy utility to recieve excluded file %v in %v",
+				"foo.txt",
+				request.excludedFiles)
+		}
+
+		if request.excludedFiles[1] != "bar.txt" {
+			t.Errorf("wanted copy utility to recieve excluded file %v in %v",
+				"bar.txt",
+				request.excludedFiles)
+		}
+	})
 }
 
-func writeToFile(filepath string, contents []byte, t *testing.T) {
-	err := ioutil.WriteFile(filepath, contents, 0644)
-
-	if err != nil {
-		t.Fatalf("error writing file '%v'", filepath)
-	}
+type requestData struct {
+	sourceDir     string
+	targetDir     string
+	excludedFiles []string
 }
 
-func TestMasterDataDirBackupTask(t *testing.T) {
-	t.Run("it copies data from a source directory to a target directory", func(t *testing.T) {
-		sourceDir := getTempDir(t)
-		defer os.RemoveAll(sourceDir)
+type mockCopyUtility struct {
+	requests []requestData
+}
 
-		targetDir := getTempDir(t)
-		defer os.RemoveAll(targetDir)
-
-		writeToFile(sourceDir+"/hi", []byte("hi"), t)
-
-		client := NewMasterDataDirBackupTask()
-		client.Restore(sourceDir, targetDir)
-
-		targetContents, _ := ioutil.ReadFile(targetDir + "/hi")
-
-		if bytes.Compare(targetContents, []byte("hi")) != 0 {
-			t.Errorf("target directory file 'hi' contained %v, wanted %v",
-				targetContents,
-				"hi")
-		}
+func (m *mockCopyUtility) Copy(sourceDir, targetDir string, excludedFiles []string) error {
+	m.requests = append(m.requests, requestData{
+		sourceDir:     sourceDir,
+		targetDir:     targetDir,
+		excludedFiles: excludedFiles,
 	})
 
-	t.Run("it removes files that existed in the target directory before the sync", func(t *testing.T) {
-		sourceDir := getTempDir(t)
-		defer os.RemoveAll(sourceDir)
+	return nil
+}
 
-		targetDir := getTempDir(t)
-		defer os.RemoveAll(targetDir)
-
-		writeToFile(targetDir+"/file-that-should-get-removed", []byte("goodbye"), t)
-
-		client := NewMasterDataDirBackupTask()
-		client.Restore(sourceDir, targetDir)
-
-		targetContents, _ := ioutil.ReadFile(targetDir + "/file-that-should-get-removed")
-
-		// XXX this checks that the file is either empty or does not exist; we
-		// should just check for existence
-		if bytes.Compare(targetContents, []byte("")) != 0 {
-			t.Errorf("target directory file 'file-that-should-get-removed' should not exist, but contains %v",
-				string(targetContents))
-		}
-	})
-
-	// TODO: port functionality checks from agent/copy_master_test.go
-
-	t.Run("returns underlying copy errors", func(t *testing.T) {
-		targetDir := getTempDir(t)
-		defer os.RemoveAll(targetDir)
-
-		client := NewMasterDataDirBackupTask()
-		err := client.Restore("/does/not/exist", targetDir)
-
-		// XXX currently the error that comes back is heavily
-		// implementation-dependent; I'm choosing not to implement a sentinel at
-		// the moment.
-		if err == nil {
-			t.Errorf("returned nil error")
-		}
-	})
+func MockCopyUtility() *mockCopyUtility {
+	return &mockCopyUtility{}
 }
