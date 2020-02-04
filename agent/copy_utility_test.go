@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -28,6 +29,10 @@ func writeToFile(filepath string, contents []byte, t *testing.T) {
 }
 
 func TestCopyUtility(t *testing.T) {
+	if _, err := exec.LookPath("rsync"); err != nil {
+		t.Skipf("tests require rsync (%v)", err)
+	}
+
 	t.Run("it copies data from a source directory to a target directory", func(t *testing.T) {
 		sourceDir := getTempDir(t)
 		defer os.RemoveAll(sourceDir)
