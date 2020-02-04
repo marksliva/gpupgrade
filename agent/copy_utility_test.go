@@ -1,4 +1,4 @@
-package agent_test
+package agent
 
 import (
 	"bytes"
@@ -7,8 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
-
-	"github.com/greenplum-db/gpupgrade/agent"
 )
 
 func getTempDir(t *testing.T) string {
@@ -42,8 +40,7 @@ func TestCopyUtility(t *testing.T) {
 
 		writeToFile(sourceDir+"/hi", []byte("hi"), t)
 
-		copyUtility := agent.NewCopyUtility()
-		if err := copyUtility.Copy(sourceDir, targetDir, []string{}); err != nil {
+		if err := CopyWithRsync(sourceDir, targetDir, []string{}); err != nil {
 			t.Errorf("Copy() returned error %+v", err)
 		}
 
@@ -65,8 +62,7 @@ func TestCopyUtility(t *testing.T) {
 
 		writeToFile(targetDir+"/file-that-should-get-removed", []byte("goodbye"), t)
 
-		copyUtility := agent.NewCopyUtility()
-		if err := copyUtility.Copy(sourceDir, targetDir, []string{}); err != nil {
+		if err := CopyWithRsync(sourceDir, targetDir, []string{}); err != nil {
 			t.Errorf("Copy() returned error %+v", err)
 		}
 
@@ -89,8 +85,7 @@ func TestCopyUtility(t *testing.T) {
 
 		writeToFile(filepath.Join(sourceDir, "file-that-should-get-excluded"), []byte("goodbye"), t)
 
-		copyUtility := agent.NewCopyUtility()
-		err := copyUtility.Copy(sourceDir, targetDir, []string{"file-that-should-get-excluded"})
+		err := CopyWithRsync(sourceDir, targetDir, []string{"file-that-should-get-excluded"})
 		if err != nil {
 			t.Errorf("Copy() returned error %+v", err)
 		}
@@ -114,8 +109,7 @@ func TestCopyUtility(t *testing.T) {
 		writeToFile(filepath.Join(targetDir, "file-that-should-get-ignored"), []byte("i'm still here"), t)
 		writeToFile(filepath.Join(targetDir, "another-file-that-should-get-ignored"), []byte("i'm still here"), t)
 
-		copyUtility := agent.NewCopyUtility()
-		err := copyUtility.Copy(sourceDir, targetDir, []string{"file-that-should-get-ignored", "another-file-that-should-get-ignored"})
+		err := CopyWithRsync(sourceDir, targetDir, []string{"file-that-should-get-ignored", "another-file-that-should-get-ignored"})
 		if err != nil {
 			t.Errorf("Copy() returned error %+v", err)
 		}
@@ -148,8 +142,7 @@ func TestCopyUtility(t *testing.T) {
 
 		writeToFile(filepath.Join(sourceDir, "some-file"), []byte("hi"), t)
 
-		copyUtility := agent.NewCopyUtility()
-		copyError := copyUtility.Copy(sourceDir, targetDir, []string{""})
+		copyError := CopyWithRsync(sourceDir, targetDir, []string{""})
 
 		if copyError == nil {
 			t.Errorf("got no copy errors, wanted a copy error because target directory did not exist")

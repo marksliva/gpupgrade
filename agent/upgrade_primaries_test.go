@@ -38,6 +38,7 @@ func TestUpgradePrimary(t *testing.T) {
 	// Disable exec.Command. This way, if a test forgets to mock it out, we
 	// crash the test instead of executing code on a dev system.
 	execCommand = nil
+	rsyncExecCommand = nil
 
 	// We need a real temporary directory to change to. Replace MkdirAll() so
 	// that we can make sure the directory is the correct one.
@@ -85,6 +86,7 @@ func TestUpgradePrimary(t *testing.T) {
 
 	t.Run("when pg_upgrade --check fails it returns an error", func(t *testing.T) {
 		execCommand = exectest.NewCommand(FailedMain)
+		rsyncExecCommand = exectest.NewCommand(Success)
 		defer func() { execCommand = nil }()
 
 		request := &idl.UpgradePrimariesRequest{
@@ -94,7 +96,7 @@ func TestUpgradePrimary(t *testing.T) {
 			CheckOnly:    true,
 			UseLinkMode:  false,
 		}
-		err := UpgradePrimaries(tempDir, request, &spyMasterDataDirBackupTask{})
+		err := UpgradePrimaries(tempDir, request)
 		if err == nil {
 			t.Fatal("UpgradeSegments() returned no error")
 		}
@@ -119,7 +121,7 @@ func TestUpgradePrimary(t *testing.T) {
 			DataDirPairs: pairs,
 			CheckOnly:    false,
 			UseLinkMode:  false}
-		err := UpgradePrimaries(tempDir, request, &spyMasterDataDirBackupTask{})
+		err := UpgradePrimaries(tempDir, request)
 		if err == nil {
 			t.Fatal("UpgradeSegments() returned no error")
 		}
@@ -137,54 +139,53 @@ func TestUpgradePrimary(t *testing.T) {
 	t.Run("it does not perform a copy of the master backup directory when using check mode", func(t *testing.T) {
 		execCommand = exectest.NewCommand(Success)
 		defer func() { execCommand = nil }()
+		var called = false
 
-		spyTask := &spyMasterDataDirBackupTask{}
+		rsyncExecCommand = exectest.NewCommandWithVerifier(Success, func(e string, a ...string) {
+			called = true
+		})
 		request := buildRequest(pairs)
 		request.CheckOnly = true
 
-		_ = UpgradePrimaries(tempDir, request, spyTask)
+		err = UpgradePrimaries(tempDir, request)
+		if err != nil {
+			t.Errorf("Received unexpected error: %#v", err)
+		}
 
-		result := spyTask.restoreCalls
-
-		if len(result) != 0 {
-			t.Errorf("recieved %v calls to rsync master data directory into segment data directory, want %v",
-				len(result),
-				0)
+		if called {
+			t.Error("Expected rsync not to be called, but it was")
 		}
 	})
 
-	t.Run("it grabs a copy of the master backup directory before running upgrade", func(t *testing.T) {
+	t.Run("it syncs the master backup dir to the primaries", func(t *testing.T) {
 		execCommand = exectest.NewCommand(Success)
-		defer func() { execCommand = nil }()
-
-		spyTask := &spyMasterDataDirBackupTask{}
+		var called = false
+		rsyncExecCommand = exectest.NewCommandWithVerifier(Success, func(_ string, args ...string) {
+			called = true
+			argString := strings.Join(args, " ")
+			archiveFlag := strings.Contains(argString, "--archive")
+			deleteFlag := strings.Contains(argString, "--delete")
+			if !archiveFlag {
+				t.Errorf("Expected to find the --archive flag in args. Actual: %#v", args)
+			}
+			if !deleteFlag {
+				t.Errorf("Expected to find the --delete flag in args. Actual: %#v", args)
+			}
+			// ...
+			// todo: if we test all the flags here, we could delete the CopyWithRsync tests
+		})
 
 		request := buildRequest(pairs)
+		request.CheckOnly = false
 		request.MasterBackupDir = "/some/master/backup/dir"
 
-		UpgradePrimaries(tempDir, request, spyTask)
-
-		result := spyTask.restoreCalls
-
-		if len(result) != len(pairs) {
-			t.Errorf("recieved %v calls to rsync, want %v",
-				len(result),
-				len(pairs))
+		err = UpgradePrimaries(tempDir, request)
+		if err != nil {
+			t.Errorf("Received unexpected error: %#v", err)
 		}
 
-		requestedFirstPair := pairs[0]
-		firstRestoreCall := result[0]
-
-		if firstRestoreCall.sourceDir != "/some/master/backup/dir" {
-			t.Errorf("rsync source directory was %v, want %v",
-				firstRestoreCall.sourceDir,
-				"/some/master/backup/dir")
-		}
-
-		if firstRestoreCall.targetDir != requestedFirstPair.TargetDataDir {
-			t.Errorf("rsync target directory was %v, want %v",
-				firstRestoreCall.targetDir,
-				requestedFirstPair.TargetDataDir)
+		if !called {
+			t.Errorf("Expected rsync command to be called but it was not")
 		}
 	})
 }
@@ -198,22 +199,4 @@ func buildRequest(pairs []*idl.DataDirPair) *idl.UpgradePrimariesRequest {
 		UseLinkMode:     false,
 		MasterBackupDir: "/some/master/backup/dir",
 	}
-}
-
-type spyMasterDataDirBackupTask struct {
-	restoreCalls []RestoreRequest
-}
-
-type RestoreRequest struct {
-	sourceDir string
-	targetDir string
-}
-
-func (c *spyMasterDataDirBackupTask) Restore(sourceDir, targetDir string) error {
-	c.restoreCalls = append(c.restoreCalls, RestoreRequest{
-		sourceDir: sourceDir,
-		targetDir: targetDir,
-	})
-
-	return nil
 }

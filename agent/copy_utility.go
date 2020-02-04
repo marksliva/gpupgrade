@@ -2,15 +2,15 @@ package agent
 
 import "os/exec"
 
-type copyUtility struct{}
+var rsyncExecCommand = exec.Command
 
-func (c copyUtility) Copy(sourceDir, targetDir string, excludedFiles []string) error {
+func CopyWithRsync(sourceDir, targetDir string, excludedFiles []string) error {
 	arguments := append([]string{
 		"--archive", "--delete",
 		sourceDir + "/", targetDir,
 	}, makeExclusionList(excludedFiles)...)
 
-	command := exec.Command("rsync", arguments...)
+	command := rsyncExecCommand("rsync", arguments...)
 	return command.Run()
 }
 
@@ -20,8 +20,4 @@ func makeExclusionList(excludedFiles []string) []string {
 		exclusions = append(exclusions, "--exclude", excludedFile)
 	}
 	return exclusions
-}
-
-func NewCopyUtility() *copyUtility {
-	return &copyUtility{}
 }

@@ -26,8 +26,7 @@ type CopyUtility interface {
 func (s *Server) UpgradePrimaries(ctx context.Context, request *idl.UpgradePrimariesRequest) (*idl.UpgradePrimariesReply, error) {
 	gplog.Info("agent starting %s", idl.Substep_UPGRADE_PRIMARIES)
 
-	task := NewMasterDataDirBackupTask(&copyUtility{}, excludedFilesRestoringBackup)
-	err := UpgradePrimaries(s.conf.StateDir, request, task)
+	err := UpgradePrimaries(s.conf.StateDir, request)
 
 	return &idl.UpgradePrimariesReply{}, err
 }
@@ -36,10 +35,6 @@ type Segment struct {
 	*idl.DataDirPair
 
 	WorkDir string // the pg_upgrade working directory, where logs are stored
-}
-
-type MasterDataDirBackupTask interface {
-	Restore(sourceDir string, targetDir string) error
 }
 
 var excludedFilesRestoringBackup = []string{
@@ -52,7 +47,7 @@ var excludedFilesRestoringBackup = []string{
 	"gpperfmon",
 }
 
-func UpgradePrimaries(stateDir string, request *idl.UpgradePrimariesRequest, masterDataDirBackupTask MasterDataDirBackupTask) error {
+func UpgradePrimaries(stateDir string, request *idl.UpgradePrimariesRequest) error {
 	segments := make([]Segment, 0, len(request.DataDirPairs))
 
 	for _, dataPair := range request.DataDirPairs {
@@ -68,7 +63,7 @@ func UpgradePrimaries(stateDir string, request *idl.UpgradePrimariesRequest, mas
 		})
 	}
 
-	err := upgradeSegments(segments, request, masterDataDirBackupTask)
+	err := upgradeSegments(segments, request)
 
 	if err != nil {
 		return errors.Wrap(err, "failed to upgrade segments")
@@ -77,7 +72,7 @@ func UpgradePrimaries(stateDir string, request *idl.UpgradePrimariesRequest, mas
 	return nil
 }
 
-func upgradeSegments(segments []Segment, request *idl.UpgradePrimariesRequest, masterDataDirBackupTask MasterDataDirBackupTask) (err error) {
+func upgradeSegments(segments []Segment, request *idl.UpgradePrimariesRequest) (err error) {
 	host, err := os.Hostname()
 	if err != nil {
 		return err
@@ -88,9 +83,11 @@ func upgradeSegments(segments []Segment, request *idl.UpgradePrimariesRequest, m
 
 	for _, segment := range segments {
 		if !request.CheckOnly {
-			masterDataDirBackupTask.Restore(
+			// todo handle error
+			CopyWithRsync(
 				request.MasterBackupDir,
 				segment.TargetDataDir,
+				excludedFilesRestoringBackup,
 			)
 		}
 
