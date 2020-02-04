@@ -2,19 +2,25 @@ package agent
 
 import (
 	"testing"
+
+	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 )
 
 func TestNewMasterDataDirBackupTask(t *testing.T) {
 
 	t.Run("it asks the copying utility to preserves some files", func(t *testing.T) {
-		copyUtility := MockCopyUtility()
+		copyUtility := &mockCopyUtility{}
 
 		task := NewMasterDataDirBackupTask(
 			copyUtility,
 			[]string{"foo.txt", "bar.txt"},
 		)
 
-		task.Restore("/some/source/dir", "/some/target/dir")
+		err := task.Restore("/some/source/dir", "/some/target/dir")
+		if err != nil {
+			t.Errorf("Restore() returned error %+v", err)
+		}
 
 		request := copyUtility.requests[0]
 
@@ -44,6 +50,16 @@ func TestNewMasterDataDirBackupTask(t *testing.T) {
 				request.excludedFiles)
 		}
 	})
+
+	t.Run("bubbles up errors from utility", func(t *testing.T) {
+		copyUtility := &mockCopyUtility{Err: errors.New("ahhhh")}
+		task := NewMasterDataDirBackupTask(copyUtility, []string{})
+
+		err := task.Restore("doesn't", "matter")
+		if !xerrors.Is(err, copyUtility.Err) {
+			t.Errorf("returned %#v, want %#v", err, copyUtility.Err)
+		}
+	})
 }
 
 type requestData struct {
@@ -53,6 +69,7 @@ type requestData struct {
 }
 
 type mockCopyUtility struct {
+	Err      error
 	requests []requestData
 }
 
@@ -63,9 +80,5 @@ func (m *mockCopyUtility) Copy(sourceDir, targetDir string, excludedFiles []stri
 		excludedFiles: excludedFiles,
 	})
 
-	return nil
-}
-
-func MockCopyUtility() *mockCopyUtility {
-	return &mockCopyUtility{}
+	return m.Err
 }

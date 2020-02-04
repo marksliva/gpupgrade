@@ -6,10 +6,7 @@ type masterDataDirBackupTask struct {
 }
 
 func (t *masterDataDirBackupTask) Restore(sourceDir, targetDir string) error {
-	// TODO: return errors
-	t.copyUtility.Copy(sourceDir, targetDir, t.excludedFiles)
-
-	return nil
+	return t.copyUtility.Copy(sourceDir, targetDir, t.excludedFiles)
 }
 
 func NewMasterDataDirBackupTask(
