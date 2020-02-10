@@ -8,6 +8,8 @@ setup_state_dir() {
 }
 
 teardown_new_cluster() {
+    local NEW_CLUSTER="$(gpupgrade config show --new-datadir)"
+
     if [ -n "$NEW_CLUSTER" ]; then
         delete_cluster $NEW_CLUSTER
     fi
@@ -23,6 +25,8 @@ setup() {
 
 teardown() {
     teardown_new_cluster
+    gpupgrade kill-services
+    gpstart -a
 }
 
 #
@@ -44,17 +48,14 @@ teardown() {
 
     local standby_status=$(get_standby_status)
 
-    [[ $standby_status == *"Standby host passive"* ]] || fail "expected standby to be up and in passive mode, got ${standby_status}"
+    local new_datadir=$(gpupgrade config show --new-datadir)
+    local actual_standby_status=$(gpstate -d "${new_datadir}")
+    local standby_status_line=$(get_standby_status $actual_standby_status)
+    [[ $standby_status_line == *"Standby host passive"* ]] || fail "expected standby to be up and in passive mode, got **** ${actual_standby_status} ****"
 }
 
 get_standby_status() {
-    local return_value=$(
-        gpstate > /tmp/.gpstate-output &&
-            cat /tmp/.gpstate-output |
-            grep 'Master standby' |
-            cut -d '-' -f 3
-    )
-
-    echo $return_value
+    local standby_status=$1
+    echo $(echo $standby_status | grep 'Standby master state')
 }
 
