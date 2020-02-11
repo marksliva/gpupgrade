@@ -2,7 +2,7 @@ package hub
 
 import (
 	"context"
-	"errors"
+	"github.com/pkg/errors"
 	"fmt"
 	"reflect"
 	"sort"

@@ -18,7 +18,11 @@ import (
 	"github.com/greenplum-db/gpupgrade/step"
 )
 
-func BeginStep(stateDir string, name string, sender idl.MessageSender) (*step.Step, error) {
+type SubstepInterface interface {
+	BeginStep(stateDir string, name string, sender idl.MessageSender) (*step.Step, error)
+}
+
+func BeginStep(stateDir string, name string, sender idl.MessageSender) (step.StepInterface, error) {
 	path := filepath.Join(stateDir, fmt.Sprintf("%s.log", name))
 	log, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {

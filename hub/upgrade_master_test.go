@@ -2,7 +2,7 @@ package hub
 
 import (
 	"bytes"
-	"errors"
+	"github.com/pkg/errors"
 	"fmt"
 	"io"
 	"io/ioutil"

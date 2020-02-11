@@ -1,7 +1,7 @@
 package commanders_test
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"reflect"
 	"strings"
 	"testing"

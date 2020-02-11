@@ -18,6 +18,12 @@ type Step struct {
 	err     error
 }
 
+type StepInterface interface {
+	Finish() error
+	Err() error
+	AlwaysRun(substep idl.Substep, f func(OutStreams) error)
+	Run(substep idl.Substep, f func(OutStreams) error)
+}
 type Store interface {
 	Read(idl.Substep) (idl.Status, error)
 	Write(idl.Substep, idl.Status) error

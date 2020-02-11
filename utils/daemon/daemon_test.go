@@ -2,7 +2,7 @@ package daemon
 
 import (
 	"bytes"
-	"errors"
+	"github.com/pkg/errors"
 	"fmt"
 	"io"
 	"time"

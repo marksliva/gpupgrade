@@ -2,7 +2,7 @@ package hub
 
 import (
 	"database/sql/driver"
-	"errors"
+	"github.com/pkg/errors"
 	"fmt"
 	"os"
 	"os/exec"

@@ -1,7 +1,7 @@
 package hub
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"fmt"
 	"os"
 	"os/exec"

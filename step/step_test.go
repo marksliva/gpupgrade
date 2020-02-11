@@ -1,7 +1,7 @@
 package step_test
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"testing"
