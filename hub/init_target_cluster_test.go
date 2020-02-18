@@ -82,10 +82,10 @@ func TestGetCheckpointSegmentsAndEncoding(t *testing.T) {
 }
 
 func TestWriteSegmentArray(t *testing.T) {
-	test := func(t *testing.T, cluster *utils.Cluster, ports PortAssignments, expected []string) {
+	test := func(t *testing.T, sourceCluster *utils.Cluster, ports PortAssignments, expected []string) {
 		t.Helper()
 
-		actual, err := WriteSegmentArray([]string{}, cluster, ports)
+		actual, err := WriteSegmentArray([]string{}, sourceCluster, ports)
 		if err != nil {
 			t.Errorf("got %#v", err)
 		}
