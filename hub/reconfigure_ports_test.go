@@ -9,6 +9,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
 
+	"github.com/greenplum-db/gpupgrade/testutils"
 	"github.com/greenplum-db/gpupgrade/utils"
 
 	. "github.com/greenplum-db/gpupgrade/hub"
@@ -19,21 +20,6 @@ var (
 	ErrSentinel = fmt.Errorf("sentinel error")
 	ErrRollback = fmt.Errorf("rollback failed")
 )
-
-// finishMock is a defer function to make the sqlmock API a little bit more like
-// gomock. Use it like this:
-//
-//     db, mock, err := sqlmock.New()
-//     if err != nil {
-//         t.Fatalf("couldn't create sqlmock: %v", err)
-//     }
-//     defer finishMock(mock, t)
-//
-func finishMock(mock sqlmock.Sqlmock, t *testing.T) {
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("%v", err)
-	}
-}
 
 func TestClonePortsFromCluster(t *testing.T) {
 	src, err := utils.NewCluster([]utils.SegConfig{
@@ -52,7 +38,7 @@ func TestClonePortsFromCluster(t *testing.T) {
 		if err != nil {
 			t.Fatalf("couldn't create sqlmock: %v", err)
 		}
-		defer finishMock(mock, t)
+		defer testutils.FinishMock(mock, t)
 
 		contents := sqlmock.NewRows([]string{"content"})
 		for _, content := range src.ContentIDs {
@@ -270,7 +256,7 @@ func TestClonePortsFromCluster(t *testing.T) {
 			if err != nil {
 				t.Fatalf("couldn't create sqlmock: %v", err)
 			}
-			defer finishMock(mock, t)
+			defer testutils.FinishMock(mock, t)
 
 			// prepare() sets up any mock expectations.
 			c.prepare(mock)

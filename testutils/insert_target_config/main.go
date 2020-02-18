@@ -45,6 +45,7 @@ func main() {
 	// populate the contents of target cluster to config
 	conn := dbconn.NewDBConnFromEnvironment("postgres")
 	config.Target, err = utils.ClusterFromDB(conn, binDir)
+	config.TargetInitializeConfig, err = hub.AssignPorts(config.Source, []int{})
 	if err != nil {
 		log.Fatal(err)
 	}

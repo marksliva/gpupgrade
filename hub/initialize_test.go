@@ -14,13 +14,8 @@ func TestAssignPorts(t *testing.T) {
 
 		cluster  *utils.Cluster
 		ports    []int
-		expected PortAssignments
+		expected InitializeConfig
 	}{{
-		name:     "sorts and deduplicates provided port range",
-		cluster:  MustCreateCluster(t, []utils.SegConfig{}),
-		ports:    []int{10, 9, 10, 9, 10, 8},
-		expected: PortAssignments{8, 0, []int{9, 10}},
-	}, {
 		name: "uses default port range when port list is empty",
 		cluster: MustCreateCluster(t, []utils.SegConfig{
 			{ContentID: -1, DbID: 1, Hostname: "mdw", DataDir: "/data/qddir/seg-1", Role: "p", PreferredRole: "p"},
@@ -28,8 +23,14 @@ func TestAssignPorts(t *testing.T) {
 			{ContentID: 1, DbID: 3, Hostname: "mdw", DataDir: "/data/dbfast2/seg2", Role: "p", PreferredRole: "p"},
 			{ContentID: 2, DbID: 4, Hostname: "sdw1", DataDir: "/data/dbfast3/seg3", Role: "p", PreferredRole: "p"},
 		}),
-		ports:    []int{},
-		expected: PortAssignments{50432, 0, []int{50433, 50434}},
+		ports: []int{},
+		expected: InitializeConfig{
+			Master: utils.SegConfig{ContentID: -1, DbID: 1, Hostname: "mdw", DataDir: "/data/qddir_upgrade/seg-1", Role: "p", PreferredRole: "p", Port: 50432},
+			Primaries: []utils.SegConfig{
+				{ContentID: 0, DbID: 2, Hostname: "mdw", DataDir: "/data/dbfast1_upgrade/seg1", Role: "p", PreferredRole: "p", Port: 50433},
+				{ContentID: 1, DbID: 3, Hostname: "mdw", DataDir: "/data/dbfast2_upgrade/seg2", Role: "p", PreferredRole: "p", Port: 50434},
+				{ContentID: 2, DbID: 4, Hostname: "sdw1", DataDir: "/data/dbfast3_upgrade/seg3", Role: "p", PreferredRole: "p", Port: 50433},
+			}},
 	}, {
 		name: "gives master its own port regardless of host layout",
 		cluster: MustCreateCluster(t, []utils.SegConfig{
@@ -38,8 +39,35 @@ func TestAssignPorts(t *testing.T) {
 			{ContentID: 1, DbID: 3, Hostname: "sdw1", DataDir: "/data/dbfast2/seg2", Role: "p", PreferredRole: "p"},
 			{ContentID: 2, DbID: 4, Hostname: "sdw1", DataDir: "/data/dbfast3/seg3", Role: "p", PreferredRole: "p"},
 		}),
-		ports:    []int{},
-		expected: PortAssignments{50432, 0, []int{50433, 50434, 50435}},
+		ports: []int{},
+		expected: InitializeConfig{
+			Master: utils.SegConfig{ContentID: -1, DbID: 1, Hostname: "mdw", DataDir: "/data/qddir_upgrade/seg-1", Role: "p", PreferredRole: "p", Port: 50432},
+			Primaries: []utils.SegConfig{
+				{ContentID: 0, DbID: 2, Hostname: "sdw1", DataDir: "/data/dbfast1_upgrade/seg1", Role: "p", PreferredRole: "p", Port: 50433},
+				{ContentID: 1, DbID: 3, Hostname: "sdw1", DataDir: "/data/dbfast2_upgrade/seg2", Role: "p", PreferredRole: "p", Port: 50434},
+				{ContentID: 2, DbID: 4, Hostname: "sdw1", DataDir: "/data/dbfast3_upgrade/seg3", Role: "p", PreferredRole: "p", Port: 50435},
+			}},
+	}, {
+		name: "when using default ports, it sets up mirrors as expected in the InitializeConfig",
+		cluster: MustCreateCluster(t, []utils.SegConfig{
+			{ContentID: -1, DbID: 1, Hostname: "mdw", DataDir: "/data/qddir/seg-1", Role: "p", PreferredRole: "p"},
+			{ContentID: 0, DbID: 2, Hostname: "sdw1", DataDir: "/data/dbfast1/seg1", Role: "p", PreferredRole: "p"},
+			{ContentID: 1, DbID: 3, Hostname: "sdw1", DataDir: "/data/dbfast2/seg2", Role: "p", PreferredRole: "p"},
+			{ContentID: 0, DbID: 4, Hostname: "sdw1", DataDir: "/data/dbfast_mirror1/seg1", Role: "m", PreferredRole: "m"},
+			{ContentID: 1, DbID: 5, Hostname: "sdw1", DataDir: "/data/dbfast_mirror2/seg2", Role: "m", PreferredRole: "m"},
+		}),
+		ports: []int{},
+		expected: InitializeConfig{
+			Master: utils.SegConfig{ContentID: -1, DbID: 1, Hostname: "mdw", DataDir: "/data/qddir_upgrade/seg-1", Role: "p", PreferredRole: "p", Port: 50432},
+			Primaries: []utils.SegConfig{
+				{ContentID: 0, DbID: 2, Hostname: "sdw1", DataDir: "/data/dbfast1_upgrade/seg1", Role: "p", PreferredRole: "p", Port: 50433},
+				{ContentID: 1, DbID: 3, Hostname: "sdw1", DataDir: "/data/dbfast2_upgrade/seg2", Role: "p", PreferredRole: "p", Port: 50434},
+			},
+			Mirrors: []utils.SegConfig{
+				{ContentID: 0, DbID: 4, Hostname: "sdw1", DataDir: "/data/dbfast_mirror1_upgrade/seg1", Role: "m", PreferredRole: "m", Port: 50435},
+				{ContentID: 1, DbID: 5, Hostname: "sdw1", DataDir: "/data/dbfast_mirror2_upgrade/seg2", Role: "m", PreferredRole: "m", Port: 50436},
+			},
+		},
 	}, {
 		name: "provides a standby port",
 		cluster: MustCreateCluster(t, []utils.SegConfig{
@@ -47,8 +75,12 @@ func TestAssignPorts(t *testing.T) {
 			{ContentID: -1, DbID: 2, Hostname: "smdw", DataDir: "/data/qddir/seg-1", Role: "m", PreferredRole: "m"},
 			{ContentID: 0, DbID: 3, Hostname: "sdw1", DataDir: "/data/dbfast1/seg1", Role: "p", PreferredRole: "p"},
 		}),
-		ports:    []int{},
-		expected: PortAssignments{50432, 50433, []int{50434}},
+		ports: []int{},
+		expected: InitializeConfig{
+			Master:    utils.SegConfig{ContentID: -1, DbID: 1, Hostname: "mdw", DataDir: "/data/qddir_upgrade/seg-1", Role: "p", PreferredRole: "p", Port: 50432},
+			Standby:   utils.SegConfig{ContentID: -1, DbID: 2, Hostname: "smdw", DataDir: "/data/qddir_upgrade/seg-1", Role: "m", PreferredRole: "m", Port: 50433},
+			Primaries: []utils.SegConfig{{ContentID: 0, DbID: 3, Hostname: "sdw1", DataDir: "/data/dbfast1_upgrade/seg1", Role: "p", PreferredRole: "p", Port: 50434}},
+		},
 	}, {
 		name: "deals with master and standby on the same host",
 		cluster: MustCreateCluster(t, []utils.SegConfig{
@@ -56,8 +88,12 @@ func TestAssignPorts(t *testing.T) {
 			{ContentID: -1, DbID: 2, Hostname: "mdw", DataDir: "/data/qddir/seg-1", Role: "m", PreferredRole: "m"},
 			{ContentID: 0, DbID: 3, Hostname: "sdw1", DataDir: "/data/dbfast1/seg1", Role: "p", PreferredRole: "p"},
 		}),
-		ports:    []int{},
-		expected: PortAssignments{50432, 50433, []int{50434}},
+		ports: []int{},
+		expected: InitializeConfig{
+			Master:    utils.SegConfig{ContentID: -1, DbID: 1, Hostname: "mdw", DataDir: "/data/qddir_upgrade/seg-1", Role: "p", PreferredRole: "p", Port: 50432},
+			Standby:   utils.SegConfig{ContentID: -1, DbID: 2, Hostname: "mdw", DataDir: "/data/qddir_upgrade/seg-1", Role: "m", PreferredRole: "m", Port: 50433},
+			Primaries: []utils.SegConfig{{ContentID: 0, DbID: 3, Hostname: "sdw1", DataDir: "/data/dbfast1_upgrade/seg1", Role: "p", PreferredRole: "p", Port: 50434}},
+		},
 	}, {
 		name: "deals with master and standby on the same host as other segments",
 		cluster: MustCreateCluster(t, []utils.SegConfig{
@@ -65,8 +101,12 @@ func TestAssignPorts(t *testing.T) {
 			{ContentID: -1, DbID: 2, Hostname: "mdw", DataDir: "/data/qddir/seg-1", Role: "m", PreferredRole: "m"},
 			{ContentID: 0, DbID: 3, Hostname: "mdw", DataDir: "/data/dbfast1/seg1", Role: "p", PreferredRole: "p"},
 		}),
-		ports:    []int{},
-		expected: PortAssignments{50432, 50433, []int{50434}},
+		ports: []int{},
+		expected: InitializeConfig{
+			Master:    utils.SegConfig{ContentID: -1, DbID: 1, Hostname: "mdw", DataDir: "/data/qddir_upgrade/seg-1", Role: "p", PreferredRole: "p", Port: 50432},
+			Standby:   utils.SegConfig{ContentID: -1, DbID: 2, Hostname: "mdw", DataDir: "/data/qddir_upgrade/seg-1", Role: "m", PreferredRole: "m", Port: 50433},
+			Primaries: []utils.SegConfig{{ContentID: 0, DbID: 3, Hostname: "mdw", DataDir: "/data/dbfast1_upgrade/seg1", Role: "p", PreferredRole: "p", Port: 50434}},
+		},
 	}, {
 		name: "assigns provided ports to the standby",
 		cluster: MustCreateCluster(t, []utils.SegConfig{
@@ -74,30 +114,50 @@ func TestAssignPorts(t *testing.T) {
 			{ContentID: -1, DbID: 2, Hostname: "mdw", DataDir: "/data/qddir/seg-1", Role: "m", PreferredRole: "m"},
 			{ContentID: 0, DbID: 3, Hostname: "mdw", DataDir: "/data/dbfast1/seg1", Role: "p", PreferredRole: "p"},
 		}),
-		ports:    []int{1, 2, 3},
-		expected: PortAssignments{1, 2, []int{3}},
+		ports: []int{1, 2, 3},
+		expected: InitializeConfig{
+			Master:    utils.SegConfig{ContentID: -1, DbID: 1, Hostname: "mdw", DataDir: "/data/qddir_upgrade/seg-1", Role: "p", PreferredRole: "p", Port: 1},
+			Standby:   utils.SegConfig{ContentID: -1, DbID: 2, Hostname: "mdw", DataDir: "/data/qddir_upgrade/seg-1", Role: "m", PreferredRole: "m", Port: 2},
+			Primaries: []utils.SegConfig{{ContentID: 0, DbID: 3, Hostname: "mdw", DataDir: "/data/dbfast1_upgrade/seg1", Role: "p", PreferredRole: "p", Port: 3}},
+		},
 	}, {
-		name: "assigns provided ports to cluster with standby and multiple primaries",
+		name: "assigns provided ports to cluster with standby and multiple primaries and multiple mirrors",
 		cluster: MustCreateCluster(t, []utils.SegConfig{
 			{ContentID: -1, DbID: 1, Hostname: "mdw", DataDir: "/data/qddir/seg-1", Role: "p", PreferredRole: "p"},
 			{ContentID: -1, DbID: 2, Hostname: "mdw", DataDir: "/data/qddir/seg-1", Role: "m", PreferredRole: "m"},
 			{ContentID: 0, DbID: 3, Hostname: "sdw1", DataDir: "/data/dbfast1/seg1", Role: "p", PreferredRole: "p"},
 			{ContentID: 1, DbID: 4, Hostname: "sdw2", DataDir: "/data/dbfast2/seg2", Role: "p", PreferredRole: "p"},
 			{ContentID: 2, DbID: 5, Hostname: "sdw3", DataDir: "/data/dbfast3/seg3", Role: "p", PreferredRole: "p"},
+			{ContentID: 0, DbID: 6, Hostname: "sdw2", DataDir: "/data/dbfast_mirror1/seg1", Role: "m", PreferredRole: "m"},
+			{ContentID: 1, DbID: 7, Hostname: "sdw3", DataDir: "/data/dbfast_mirror2/seg2", Role: "m", PreferredRole: "m"},
+			{ContentID: 2, DbID: 8, Hostname: "sdw1", DataDir: "/data/dbfast_mirror3/seg3", Role: "m", PreferredRole: "m"},
 		}),
-		ports:    []int{1, 2, 3, 4, 5},
-		expected: PortAssignments{1, 2, []int{3, 4, 5}},
+		ports: []int{1, 2, 3, 4, 5},
+		expected: InitializeConfig{
+			Master:  utils.SegConfig{ContentID: -1, DbID: 1, Hostname: "mdw", DataDir: "/data/qddir_upgrade/seg-1", Role: "p", PreferredRole: "p", Port: 1},
+			Standby: utils.SegConfig{ContentID: -1, DbID: 2, Hostname: "mdw", DataDir: "/data/qddir_upgrade/seg-1", Role: "m", PreferredRole: "m", Port: 2},
+			Primaries: []utils.SegConfig{
+				{ContentID: 0, DbID: 3, Hostname: "sdw1", DataDir: "/data/dbfast1_upgrade/seg1", Role: "p", PreferredRole: "p", Port: 3},
+				{ContentID: 1, DbID: 4, Hostname: "sdw2", DataDir: "/data/dbfast2_upgrade/seg2", Role: "p", PreferredRole: "p", Port: 3},
+				{ContentID: 2, DbID: 5, Hostname: "sdw3", DataDir: "/data/dbfast3_upgrade/seg3", Role: "p", PreferredRole: "p", Port: 3},
+			},
+			Mirrors: []utils.SegConfig{
+				{ContentID: 0, DbID: 6, Hostname: "sdw2", DataDir: "/data/dbfast_mirror1_upgrade/seg1", Role: "m", PreferredRole: "m", Port: 4},
+				{ContentID: 1, DbID: 7, Hostname: "sdw3", DataDir: "/data/dbfast_mirror2_upgrade/seg2", Role: "m", PreferredRole: "m", Port: 4},
+				{ContentID: 2, DbID: 8, Hostname: "sdw1", DataDir: "/data/dbfast_mirror3_upgrade/seg3", Role: "m", PreferredRole: "m", Port: 4},
+			},
+		},
 	}}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			actual, err := assignPorts(c.cluster, c.ports)
+			actual, err := AssignPorts(c.cluster, c.ports)
 			if err != nil {
 				t.Errorf("returned error %+v", err)
 			}
 
 			if !reflect.DeepEqual(actual, c.expected) {
-				t.Errorf("assignPorts(<cluster>, %v)=%v, want %v", c.ports, actual, c.expected)
+				t.Errorf("AssignPorts(<cluster>, %v)=%v, want %v", c.ports, actual, c.expected)
 			}
 		})
 	}
@@ -148,6 +208,14 @@ func TestAssignPorts(t *testing.T) {
 		}),
 		ports: []int{15433, 15434},
 	}, {
+		name: "errors when there are not enough ports for the mirrors",
+		cluster: MustCreateCluster(t, []utils.SegConfig{
+			{ContentID: -1, DbID: 1, Hostname: "mdw", DataDir: "/data/qddir/seg-1", Role: "p", PreferredRole: "p"},
+			{ContentID: 0, DbID: 2, Hostname: "sdw1", DataDir: "/data/dbfast1/seg1", Role: "p", PreferredRole: "p"},
+			{ContentID: 0, DbID: 3, Hostname: "sdw1", DataDir: "/data/dbfast_mirror1/seg1", Role: "m", PreferredRole: "m"},
+		}),
+		ports: []int{15433, 15434},
+	}, {
 		// regression case
 		name: "doesn't panic when not given enough unique ports with a standby on a different host",
 		cluster: MustCreateCluster(t, []utils.SegConfig{
@@ -160,20 +228,10 @@ func TestAssignPorts(t *testing.T) {
 
 	for _, c := range errCases {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := assignPorts(c.cluster, c.ports)
+			_, err := AssignPorts(c.cluster, c.ports)
 			if err == nil {
-				t.Errorf("assignPorts(<cluster>, %v) returned nil, want error", c.ports)
+				t.Errorf("AssignPorts(<cluster>, %v) returned nil, want error", c.ports)
 			}
 		})
 	}
-
-	t.Run("checkTargetPorts panics if it is passed zero ports", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Errorf("checkTargetPorts did not panic")
-			}
-		}()
-
-		checkTargetPorts(MustCreateCluster(t, []utils.SegConfig{}), []int{})
-	})
 }

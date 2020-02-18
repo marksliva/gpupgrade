@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
@@ -26,20 +27,32 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 		}
 	}()
 
+	// This runner runs all commands against the target cluster.
+	targetRunner := &greenplumRunner{
+		masterPort:          s.Target.MasterPort(),
+		masterDataDirectory: s.Target.MasterDataDir(),
+		binDir:              s.Target.BinDir,
+	}
+
 	if s.Source.HasStandby() {
 		st.Run(idl.Substep_FINALIZE_UPGRADE_STANDBY, func(streams step.OutStreams) error {
-			greenplumRunner := &greenplumRunner{
-				masterPort:          s.Target.MasterPort(),
-				masterDataDirectory: s.Target.MasterDataDir(),
-				binDir:              s.Target.BinDir,
-				streams:             streams,
-			}
+			// XXX this probably indicates a bad abstraction
+			targetRunner.streams = streams
 
-			return UpgradeStandby(greenplumRunner, StandbyConfig{
-				Port:          s.TargetPorts.Standby,
+			return UpgradeStandby(targetRunner, StandbyConfig{
+				Port:          s.TargetInitializeConfig.Standby.Port,
 				Hostname:      s.Source.StandbyHostname(),
 				DataDirectory: s.Source.StandbyDataDirectory() + "_upgrade",
 			})
+		})
+	}
+
+	if s.Source.HasMirrors() {
+		st.Run(idl.Substep_FINALIZE_UPGRADE_MIRRORS, func(streams step.OutStreams) error {
+			// XXX this probably indicates a bad abstraction
+			targetRunner.streams = streams
+
+			return UpgradeMirrors(s.StateDir, s.Target.MasterPort(), &s.TargetInitializeConfig, targetRunner)
 		})
 	}
 
@@ -67,6 +80,12 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 	st.Run(idl.Substep_FINALIZE_UPDATE_POSTGRESQL_CONF, func(streams step.OutStreams) error {
 		return UpdateMasterPostgresqlConf(s.Source, s.Target)
 	})
+
+	if s.Source.HasMirrors() {
+		st.Run(idl.Substep_FINALIZE_UPDATE_RECOVERY_CONFS, func(streams step.OutStreams) error {
+			return UpdateRecoveryConfs(context.Background(), s.agentConns, s.Source, s.Target, s.TargetInitializeConfig)
+		})
+	}
 
 	st.Run(idl.Substep_FINALIZE_START_TARGET_CLUSTER, func(streams step.OutStreams) error {
 		return StartCluster(streams, s.Target, false)
