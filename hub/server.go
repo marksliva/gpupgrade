@@ -356,6 +356,7 @@ type InitializeConfig struct {
 	Standby    utils.SegConfig
 	Master	   utils.SegConfig
 	Primaries  []utils.SegConfig
+	Mirrors    []utils.SegConfig
 }
 
 // Config contains all the information that will be persisted to/loaded from
