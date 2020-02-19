@@ -42,6 +42,7 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 			})
 		})
 	}
+	// add mirrors here
 
 	st.Run(idl.Substep_FINALIZE_SHUTDOWN_TARGET_CLUSTER, func(streams step.OutStreams) error {
 		return StopCluster(streams, s.Target, false)
