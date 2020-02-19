@@ -10,9 +10,6 @@ import (
 
 type GreenplumRunner interface {
 	ShellRunner
-	BinDir() string
-	MasterDataDirectory() string
-	MasterPort() int
 }
 
 func (e *greenplumRunner) Run(utilityName string, arguments ...string) error {
