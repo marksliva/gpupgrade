@@ -177,8 +177,32 @@ func userSpecifiedPorts(source *utils.Cluster, ports []int) (InitializeConfig, e
 			portIndexByHost[segment.Hostname] = nextPortIndex + 1
 		}
 
-		if segment.Role == utils.PrimaryRole {
-			targetInitializeConfig.Primaries = append(targetInitializeConfig.Primaries, segment)
+		targetInitializeConfig.Primaries = append(targetInitializeConfig.Primaries, segment)
+	}
+
+	for _, content := range source.ContentIDs {
+		// Skip the standby segment
+		if content == -1 {
+			continue
+		}
+
+		// skip mirrors that don't exist. todo: can we check this once before the loop?
+		if segment, ok := source.Mirrors[content]; ok {
+			if portIndex, ok := portIndexByHost[segment.Hostname]; ok {
+				if portIndex > len(ports)-1 {
+					return InitializeConfig{}, errors.New("not enough ports")
+				}
+				segment.Port = ports[portIndex]
+				portIndexByHost[segment.Hostname]++
+			} else {
+				if nextPortIndex > len(ports)-1 {
+					return InitializeConfig{}, errors.New("not enough ports")
+				}
+				segment.Port = ports[nextPortIndex]
+				portIndexByHost[segment.Hostname] = nextPortIndex + 1
+			}
+
+			targetInitializeConfig.Mirrors = append(targetInitializeConfig.Mirrors, segment)
 		}
 	}
 
@@ -242,8 +266,26 @@ func defaultTargetPorts(source *utils.Cluster) InitializeConfig {
 			portByHost[segment.Hostname] = nextPort + 1
 		}
 
-		if segment.Role == utils.PrimaryRole {
-			targetInitializeConfig.Primaries = append(targetInitializeConfig.Primaries, segment)
+		targetInitializeConfig.Primaries = append(targetInitializeConfig.Primaries, segment)
+	}
+
+	for _, content := range source.ContentIDs {
+		// Skip the standby segment
+		if content == -1 {
+			continue
+		}
+
+		// skip mirrors that don't exist. todo: can we check this once before the loop?
+		if segment, ok := source.Mirrors[content]; ok {
+			if port, ok := portByHost[segment.Hostname]; ok {
+				segment.Port = port
+				portByHost[segment.Hostname]++
+			} else {
+				segment.Port = nextPort
+				portByHost[segment.Hostname] = nextPort + 1
+			}
+
+			targetInitializeConfig.Mirrors = append(targetInitializeConfig.Mirrors, segment)
 		}
 	}
 
