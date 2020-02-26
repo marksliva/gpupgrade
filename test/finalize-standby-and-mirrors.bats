@@ -24,17 +24,13 @@ setup() {
 }
 
 teardown() {
-    teardown_new_cluster
+    #todo uncomment
+#    teardown_new_cluster
     gpupgrade kill-services
-    gpstart -a
+#    gpstart -a
     echo "done"
 }
 
-#
-# This test should probably become a journey test for
-# more finalize steps that actually go through the process of
-# finalizing a cluster (mirrors, etc)
-#
 @test "finalize brings up the standby and mirrors for the new cluster" {
     local source_mirrors_count=$(number_of_mirrors)
     gpupgrade initialize \
@@ -63,7 +59,7 @@ number_of_mirrors() {
     # when the target cluster has finalized, it is running under the same PGPORT as the source cluster
     psql postgres --tuples-only --no-align -c "
         select count(*) from gp_segment_configuration
-            where role='m' and status='u' and content != -1
+            where role='m' and status='u' and mode='s' and content != -1
     "
 }
 

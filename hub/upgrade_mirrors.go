@@ -50,37 +50,39 @@ func waitForFTS(masterPort int) error {
 			return xerrors.Errorf("closing probe scan results: %w", err)
 		}
 
-		err = func() error {
+		doneWaiting, err := func() (bool, error) {
+			var up bool
 			rows, err = db.Query(`
 				SELECT every(status = 'u')
 					FROM gp_segment_configuration
 					WHERE role = 'm'
 			`)
 			if err != nil {
-				return xerrors.Errorf("querying mirror status: %w", err)
+				return false, xerrors.Errorf("querying mirror status: %w", err)
 			}
 
 			defer rows.Close() // XXX lost error
 
 			for rows.Next() {
-				var up bool
 				if err := rows.Scan(&up); err != nil {
-					return xerrors.Errorf("scanning mirror status: %w", err)
-				}
-
-				if up {
-					return nil
+					return false, xerrors.Errorf("scanning mirror status: %w", err)
 				}
 			}
 			if err := rows.Err(); err != nil {
-				return xerrors.Errorf("iterating mirror status: %w", err)
+				return false, xerrors.Errorf("iterating mirror status: %w", err)
 			}
 
-			return nil
+			return up, nil
 		}()
+
 		if err != nil {
 			return err
 		}
+
+		if doneWaiting {
+			return nil
+		}
+		// todo: timeout after 2 minutes
 
 		time.Sleep(time.Second)
 	}
