@@ -81,10 +81,11 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 	st.Run(idl.Substep_FINALIZE_UPDATE_CATALOG_WITH_PORT, func(streams step.OutStreams) error {
 		// todo: quick test to see if it works.. needs to actually run on each agent
 		for contentID, mirror := range s.TargetInitializeConfig.Mirrors {
-			finalizedPort := fmt.Sprintf("port=%d", s.Source.Mirrors[contentID].Port)
-			temporaryPort := fmt.Sprintf("port=%d", mirror.Port)
-			recoveryConfFile := filepath.Join(mirror.DataDir, "recovery.conf")
-			searchReplace := fmt.Sprintf("s/%s/%s/", temporaryPort, finalizedPort)
+			primaryPort := fmt.Sprintf("port=%d", s.Source.Primaries[contentID].Port)
+			temporaryPort := fmt.Sprintf("port=%d", s.Target.Primaries[contentID].Port)
+			// todo: set the upgradeDataDir when TargetInitializeConfig is set
+			recoveryConfFile := filepath.Join(upgradeDataDir(mirror.DataDir), "recovery.conf")
+			searchReplace := fmt.Sprintf("s/%s/%s/", temporaryPort, primaryPort)
 			backupExtension := ".gpupgrade.backup"
 
 			sedCmdString := fmt.Sprintf("sed -i'%s' '%s' %s", backupExtension, searchReplace, recoveryConfFile)
@@ -92,9 +93,8 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 			gplog.Debug("running sed command %s", sedCmdString)
 			sedCommand := exec.Command("bash", "-c", sedCmdString)
 			output, err := sedCommand.Output()
-			gplog.Error(fmt.Sprintf("ran sed command %s", sedCmdString))
 			if err != nil {
-				panic(fmt.Sprintf("sed cmd %q failed with error: %+v output was %s", sedCmdString, err, output))
+				gplog.Error(fmt.Sprintf("sed cmd %q failed with error: %+v output was %s", sedCmdString, err, output))
 			}
 		}
 		return UpdateCatalogWithPortInformation(s.Source, s.Target)

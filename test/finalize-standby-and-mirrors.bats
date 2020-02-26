@@ -42,7 +42,7 @@ teardown() {
 
     gpupgrade execute --verbose
 
-    gpupgrade finalize
+    gpupgrade finalize --verbose
 
     local new_datadir=$(gpupgrade config show --new-datadir)
     local actual_standby_status=$(gpstate -d "${new_datadir}")
