@@ -15,7 +15,7 @@ import (
 
 func writeGpAddmirrorsConfig(conf *InitializeConfig, out io.Writer) error {
 	for _, m := range conf.Mirrors {
-		_, err := fmt.Fprintf(out, "%d|%s|%d|%s\n", m.ContentID, m.Hostname, m.Port, upgradeDataDir(m.DataDir)) // XXX this should go into the config
+		_, err := fmt.Fprintf(out, "%d|%s|%d|%s\n", m.ContentID, m.Hostname, m.Port, m.DataDir)
 		if err != nil {
 			return err
 		}

@@ -31,14 +31,14 @@ func TestUpgradeMirrors(t *testing.T) {
 				ContentID: 0,
 				Port:      234,
 				Hostname:  "localhost",
-				DataDir:   "/data/mirrors/seg0",
+				DataDir:   "/data/mirrors_upgrade/seg0",
 				Role:      "m",
 			}, {
 				DbID:      4,
 				ContentID: 1,
 				Port:      235,
 				Hostname:  "localhost",
-				DataDir:   "/data/mirrors/seg1",
+				DataDir:   "/data/mirrors_upgrade/seg1",
 				Role:      "m",
 			}},
 		}
@@ -47,8 +47,8 @@ func TestUpgradeMirrors(t *testing.T) {
 		writeGpAddmirrorsConfig(&initializeConfig, &out)
 
 		lines := []string{
-			"0|localhost|234|/data/mirrors/seg0",
-			"1|localhost|235|/data/mirrors/seg1",
+			"0|localhost|234|/data/mirrors_upgrade/seg0",
+			"1|localhost|235|/data/mirrors_upgrade/seg1",
 		}
 
 		expected := strings.Join(lines, "\n") + "\n"
@@ -154,14 +154,14 @@ func TestUpgradeMirrors(t *testing.T) {
 				ContentID: 0,
 				Port:      234,
 				Hostname:  "localhost",
-				DataDir:   "/data/mirrors/seg0",
+				DataDir:   "/data/mirrors_upgrade/seg0",
 				Role:      "m",
 			}, {
 				DbID:      4,
 				ContentID: 1,
 				Port:      235,
 				Hostname:  "localhost",
-				DataDir:   "/data/mirrors/seg1",
+				DataDir:   "/data/mirrors_upgrade/seg1",
 				Role:      "m",
 			}},
 		}
@@ -194,22 +194,22 @@ func TestUpgradeMirrors(t *testing.T) {
 			return nil
 		}}
 
-		err = UpgradeMirrors(stateDir, &initializeConfig, &stub)
+		err = UpgradeMirrors(stateDir, 6000, &initializeConfig, &stub)
 
 		if err != nil {
 			t.Errorf("got unexpected error from UpgradeMirrors %#v", err)
 		}
 
-		lines := []string{
-			"0|localhost|234|/data/mirrors/seg0",
-			"1|localhost|235|/data/mirrors/seg1",
+		expectedLines := []string{
+			"0|localhost|234|/data/mirrors_upgrade/seg0",
+			"1|localhost|235|/data/mirrors_upgrade/seg1",
 		}
 
-		expectedFileContents := strings.Join(lines, "\n") + "\n"
+		expectedFileContents := strings.Join(expectedLines, "\n") + "\n"
 		fileContents, _ := ioutil.ReadAll(readPipe)
 
 		if expectedFileContents != string(fileContents) {
-			t.Errorf("got file contents %+v want %+v", fileContents, expectedFileContents)
+			t.Errorf("got file contents %q want %q", fileContents, expectedFileContents)
 		}
 
 		if !runCalled {
@@ -223,7 +223,7 @@ func TestUpgradeMirrors(t *testing.T) {
 			return nil, expectedError
 		}
 
-		err := UpgradeMirrors("", &InitializeConfig{}, &greenplumStub{})
+		err := UpgradeMirrors("", 6000, &InitializeConfig{}, &greenplumStub{})
 		if !xerrors.Is(err, expectedError) {
 			t.Errorf("returned error %#v want %#v", err, expectedError)
 		}
@@ -246,7 +246,7 @@ func TestUpgradeMirrors(t *testing.T) {
 			return nil
 		}
 
-		err := UpgradeMirrors("/state/dir", conf, stub)
+		err := UpgradeMirrors("/state/dir", 6000, conf, stub)
 
 		var merr *multierror.Error
 		if !xerrors.As(err, &merr) {
@@ -277,7 +277,7 @@ func TestUpgradeMirrors(t *testing.T) {
 			return expectedErr
 		}}
 
-		err := UpgradeMirrors("/state/dir", &InitializeConfig{}, stub)
+		err := UpgradeMirrors("/state/dir", 6000, &InitializeConfig{}, stub)
 		if !xerrors.Is(err, expectedErr) {
 			t.Errorf("returned error %#v want %#v", err, expectedErr)
 		}
