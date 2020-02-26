@@ -1,11 +1,9 @@
 package hub
 
 import (
-	"database/sql"
 	"fmt"
 	"os/exec"
 	"path/filepath"
-	"time"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/hashicorp/go-multierror"
@@ -57,14 +55,6 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 
 		return UpgradeMirrors(s.StateDir, s.Target.MasterPort(), &s.TargetInitializeConfig, targetRunner)
 	})
-
-	// todo: not sure if this is still necessary..
-	connURI := fmt.Sprintf("postgresql://localhost:%d/template1", s.Target.MasterPort())
-	db, err := sql.Open("pgx", connURI)
-	tx, err := db.Begin()
-	_, _ = tx.Query("SELECT gp_request_fts_probe_scan();")
-	_ = tx.Commit()
-	time.Sleep(30)
 
 	st.Run(idl.Substep_FINALIZE_SHUTDOWN_TARGET_CLUSTER, func(streams step.OutStreams) error {
 		return StopCluster(streams, s.Target, false)
