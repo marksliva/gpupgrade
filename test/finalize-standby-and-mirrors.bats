@@ -53,6 +53,7 @@ teardown() {
     local gp_segment_configuration=$(psql postgres -c "select * from gp_segment_configuration")
     [[ $source_mirrors_count -eq $target_mirrors_count ]] || exit "expected target mirrors count '${target_mirrors_count}' to equal source mirrors count '${source_mirrors_count}'. gp_segment_configuration:
         ${gp_segment_configuration}"
+    # todo: check the validity of the upgraded mirrors - failover to them, etc. similar to cross-subnet testing
 }
 
 number_of_mirrors() {

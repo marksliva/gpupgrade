@@ -58,6 +58,7 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 		return UpgradeMirrors(s.StateDir, s.Target.MasterPort(), &s.TargetInitializeConfig, targetRunner)
 	})
 
+	// todo: not sure if this is still necessary..
 	connURI := fmt.Sprintf("postgresql://localhost:%d/template1", s.Target.MasterPort())
 	db, err := sql.Open("pgx", connURI)
 	tx, err := db.Begin()
