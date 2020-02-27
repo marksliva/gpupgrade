@@ -139,6 +139,7 @@ func userSpecifiedPorts(source *utils.Cluster, ports []int) (InitializeConfig, e
 			return InitializeConfig{}, errors.New("not enough ports")
 		}
 		master.Port = ports[nextPortIndex]
+		master.DataDir = upgradeDataDir(master.DataDir)
 		targetInitializeConfig.Master = master
 		nextPortIndex++
 	}
@@ -149,6 +150,7 @@ func userSpecifiedPorts(source *utils.Cluster, ports []int) (InitializeConfig, e
 			return InitializeConfig{}, errors.New("not enough ports")
 		}
 		standby.Port = ports[nextPortIndex]
+		standby.DataDir = upgradeDataDir(standby.DataDir)
 		targetInitializeConfig.Standby = standby
 		nextPortIndex++
 	}
@@ -176,6 +178,7 @@ func userSpecifiedPorts(source *utils.Cluster, ports []int) (InitializeConfig, e
 			segment.Port = ports[nextPortIndex]
 			portIndexByHost[segment.Hostname] = nextPortIndex + 1
 		}
+		segment.DataDir = upgradeDataDir(segment.DataDir)
 
 		targetInitializeConfig.Primaries = append(targetInitializeConfig.Primaries, segment)
 	}
@@ -238,6 +241,7 @@ func defaultTargetPorts(source *utils.Cluster) InitializeConfig {
 	if master, ok := source.Primaries[-1]; ok {
 		// Reserve a port for the master.
 		master.Port = nextPort
+		master.DataDir = upgradeDataDir(master.DataDir)
 		targetInitializeConfig.Master = master
 		nextPort++
 	}
@@ -245,6 +249,7 @@ func defaultTargetPorts(source *utils.Cluster) InitializeConfig {
 	if standby, ok := source.Mirrors[-1]; ok {
 		// Reserve a port for the standby.
 		standby.Port = nextPort
+		standby.DataDir = upgradeDataDir(standby.DataDir)
 		targetInitializeConfig.Standby = standby
 		nextPort++
 	}
@@ -266,6 +271,7 @@ func defaultTargetPorts(source *utils.Cluster) InitializeConfig {
 			segment.Port = nextPort
 			portByHost[segment.Hostname] = nextPort + 1
 		}
+		segment.DataDir = upgradeDataDir(segment.DataDir)
 
 		targetInitializeConfig.Primaries = append(targetInitializeConfig.Primaries, segment)
 	}
