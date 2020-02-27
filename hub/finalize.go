@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
@@ -68,24 +69,6 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 	// TODO: if any steps needs to connect to the new cluster (that should use new port), we should either
 	// write it to the config.json or add some way to identify the state.
 	st.Run(idl.Substep_FINALIZE_UPDATE_CATALOG_WITH_PORT, func(streams step.OutStreams) error {
-		// todo: quick test to see if it works.. needs to actually run on each agent
-		// todo: started replacing this
-		//for contentID, mirror := range s.TargetInitializeConfig.Mirrors {
-		//	primaryPort := fmt.Sprintf("port=%d", s.Source.Primaries[contentID].Port)
-		//	temporaryPort := fmt.Sprintf("port=%d", s.Target.Primaries[contentID].Port)
-		//	recoveryConfFile := filepath.Join(mirror.DataDir, "recovery.conf")
-		//	searchReplace := fmt.Sprintf("s/%s/%s/", temporaryPort, primaryPort)
-		//	backupExtension := ".gpupgrade.backup"
-		//
-		//	sedCmdString := fmt.Sprintf("sed -i'%s' '%s' %s", backupExtension, searchReplace, recoveryConfFile)
-		//
-		//	gplog.Debug("running sed command %s", sedCmdString)
-		//	sedCommand := exec.Command("bash", "-c", sedCmdString)
-		//	output, err := sedCommand.Output()
-		//	if err != nil {
-		//		gplog.Error(fmt.Sprintf("sed cmd %q failed with error: %+v output was %s", sedCmdString, err, output))
-		//	}
-		//}
 		return UpdateCatalogWithPortInformation(s.Source, s.Target)
 	})
 
@@ -95,6 +78,10 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 
 	st.Run(idl.Substep_FINALIZE_UPDATE_POSTGRESQL_CONF, func(streams step.OutStreams) error {
 		return UpdateMasterPostgresqlConf(s.Source, s.Target)
+	})
+
+	st.Run(idl.Substep_FINALIZE_UPDATE_RECOVERY_CONFS, func(streams step.OutStreams) error {
+		return UpdateRecoveryConfs(context.Background(), s.agentConns, s.Source, s.Target, s.TargetInitializeConfig)
 	})
 
 	st.Run(idl.Substep_FINALIZE_START_TARGET_CLUSTER, func(streams step.OutStreams) error {
