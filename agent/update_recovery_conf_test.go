@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/greenplum-db/gpupgrade/agent"
+	"github.com/greenplum-db/gpupgrade/idl"
 	"github.com/greenplum-db/gpupgrade/testutils/exectest"
 )
 
@@ -59,12 +60,12 @@ func TestUpdateRecoveryConfPorts(t *testing.T) {
 
 		agent.SetSedCommand(sedCommandWithVerifier)
 
-		recoverConfInfos := []agent.RecoverConfInfo{
+		recoveryConfInfos := &idl.UpdateRecoveryConfsRequest{RecoveryConfInfos: []*idl.RecoveryConfInfo{
 			{TemporaryPort: 1234, SourcePort: 8000, DataDir: "/tmp/datadirs/mirror1_upgrade/gpseg0"},
 			{TemporaryPort: 1235, SourcePort: 8001, DataDir: "/tmp/datadirs/mirror2_upgrade/gpseg1"},
-		}
+		}}
 
-		err := agent.UpdateRecoveryConfPorts(recoverConfInfos)
+		err := agent.UpdateRecoveryConfPorts(recoveryConfInfos)
 
 		if err != nil {
 			t.Errorf("got error %+v want no error", err)
@@ -81,11 +82,11 @@ func TestUpdateRecoveryConfPorts(t *testing.T) {
 
 	t.Run("when there is an error running the sed command it returns it", func(t *testing.T) {
 		agent.SetSedCommand(exectest.NewCommand(sedFailed))
-		recoverConfInfos := []agent.RecoverConfInfo{
+		recoveryConfInfos := &idl.UpdateRecoveryConfsRequest{RecoveryConfInfos: []*idl.RecoveryConfInfo{
 			{TemporaryPort: 1234, SourcePort: 8000, DataDir: "/tmp/datadirs/mirror1_upgrade/gpseg0"},
-		}
+		}}
 
-		err := agent.UpdateRecoveryConfPorts(recoverConfInfos)
+		err := agent.UpdateRecoveryConfPorts(recoveryConfInfos)
 		// todo: verify the exit error from sedFailed matches the error thrown
 		if err == nil {
 			t.Errorf("expected an error, got nil")
