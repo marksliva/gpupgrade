@@ -30,16 +30,7 @@ func runAddMirrors(r GreenplumRunner, filepath string) error {
 	)
 }
 
-func waitForFTS(masterPort int) error {
-	// TODO: pull this up, and especially test for search_path sanitization
-	connURI := fmt.Sprintf("postgresql://localhost:%d/template1?gp_session_role=utility&search_path=", masterPort)
-	db, err := sql.Open("pgx", connURI)
-	if err != nil {
-		return err
-	}
-
-	defer db.Close()
-
+func waitForFTS(db *sql.DB) error {
 	for {
 		rows, err := db.Query("SELECT gp_request_fts_probe_scan();")
 		if err != nil {
@@ -89,6 +80,18 @@ func waitForFTS(masterPort int) error {
 }
 
 func UpgradeMirrors(stateDir string, masterPort int, conf *InitializeConfig, targetRunner GreenplumRunner) (err error) {
+	connURI := fmt.Sprintf("postgresql://localhost:%d/template1?gp_session_role=utility&search_path=", masterPort)
+	db, err := utils.System.SqlOpen("pgx", connURI)
+	if err != nil {
+		return err
+	}
+
+	defer db.Close()
+
+	return doUpgrade(db, stateDir, conf, targetRunner)
+}
+
+func doUpgrade(db *sql.DB, stateDir string, conf *InitializeConfig, targetRunner GreenplumRunner) (err error) {
 	path := filepath.Join(stateDir, "add_mirrors_config")
 	// calling Close() on a file twice results in an error
 	// only call Close() in the defer if we haven't yet tried to close it.
@@ -124,5 +127,5 @@ func UpgradeMirrors(stateDir string, masterPort int, conf *InitializeConfig, tar
 		return err
 	}
 
-	return waitForFTS(masterPort)
+	return waitForFTS(db)
 }

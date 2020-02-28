@@ -2,6 +2,7 @@ package hub
 
 import (
 	"bytes"
+	"database/sql"
 	"errors"
 	"flag"
 	"io/ioutil"
@@ -10,9 +11,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greenplum-db/gpupgrade/utils"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
+
+	"github.com/greenplum-db/gpupgrade/testutils"
+	"github.com/greenplum-db/gpupgrade/utils"
 )
 
 type greenplumStub struct {
@@ -23,7 +27,7 @@ func (g *greenplumStub) Run(utilityName string, arguments ...string) error {
 	return g.run(utilityName, arguments...)
 }
 
-func TestUpgradeMirrors(t *testing.T) {
+func TestWriteGpAddmirrorsConfig(t *testing.T) {
 	t.Run("streams the gpaddmirrors config file format", func(t *testing.T) {
 		initializeConfig := InitializeConfig{
 			Mirrors: []utils.SegConfig{{
@@ -44,7 +48,10 @@ func TestUpgradeMirrors(t *testing.T) {
 		}
 		var out bytes.Buffer
 
-		writeGpAddmirrorsConfig(&initializeConfig, &out)
+		err := writeGpAddmirrorsConfig(&initializeConfig, &out)
+		if err != nil {
+			t.Errorf("unexpected error: %#v", err)
+		}
 
 		lines := []string{
 			"0|localhost|234|/data/mirrors_upgrade/seg0",
@@ -70,23 +77,25 @@ func TestUpgradeMirrors(t *testing.T) {
 			t.Errorf("returned error %#v, want %#v", err, writer.err)
 		}
 	})
+}
 
-	t.Run("runAddMirrors runs gpaddmirrors with the created config file", func(t *testing.T) {
+func TestRunAddMirrors(t *testing.T) {
+	t.Run("runs gpaddmirrors with the created config file", func(t *testing.T) {
 		expectedFilepath := "/add/mirrors/config_file"
 		runCalled := false
 
 		stub := &greenplumStub{
-			func(utilityName string, arguments ...string) error {
+			func(utility string, arguments ...string) error {
 				runCalled = true
 
-				expected := "gpaddmirrors"
-				if utilityName != expected {
-					t.Errorf("ran utility %q, want %q", utilityName, expected)
+				expectedUtility := "gpaddmirrors"
+				if utility != expectedUtility {
+					t.Errorf("ran utility %q, want %q", utility, expectedUtility)
 				}
 
 				var fs flag.FlagSet
 
-				filepath := fs.String("i", "", "")
+				actualFilepath := fs.String("i", "", "")
 				quietMode := fs.Bool("a", false, "")
 
 				err := fs.Parse(arguments)
@@ -94,8 +103,8 @@ func TestUpgradeMirrors(t *testing.T) {
 					t.Fatalf("error parsing arguments: %+v", err)
 				}
 
-				if *filepath != expectedFilepath {
-					t.Errorf("got filepath %q, want %q", *filepath, expectedFilepath)
+				if *actualFilepath != expectedFilepath {
+					t.Errorf("got filepath %q, want %q", *actualFilepath, expectedFilepath)
 				}
 
 				if !*quietMode {
@@ -115,7 +124,7 @@ func TestUpgradeMirrors(t *testing.T) {
 		}
 	})
 
-	t.Run("runAddMirrors bubbles up errors from the utility", func(t *testing.T) {
+	t.Run("bubbles up errors from the utility", func(t *testing.T) {
 		stub := new(greenplumStub)
 
 		expected := errors.New("ahhhh")
@@ -128,6 +137,14 @@ func TestUpgradeMirrors(t *testing.T) {
 			t.Errorf("returned error %#v, want %#v", actual, expected)
 		}
 	})
+}
+
+func TestDoUpgrade(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("couldn't create sqlmock: %v", err)
+	}
+	defer testutils.FinishMock(mock, t)
 
 	t.Run("UpgradeMirrors writes the add mirrors config to the and runs add mirrors", func(t *testing.T) {
 		stateDir := "/the/state/dir"
@@ -194,7 +211,10 @@ func TestUpgradeMirrors(t *testing.T) {
 			return nil
 		}}
 
-		err = UpgradeMirrors(stateDir, 6000, &initializeConfig, &stub)
+		expectFtsProbe(mock)
+		expectMirrorsAndReturn(mock, "t")
+
+		err = doUpgrade(db, stateDir, &initializeConfig, &stub)
 
 		if err != nil {
 			t.Errorf("got unexpected error from UpgradeMirrors %#v", err)
@@ -223,7 +243,7 @@ func TestUpgradeMirrors(t *testing.T) {
 			return nil, expectedError
 		}
 
-		err := UpgradeMirrors("", 6000, &InitializeConfig{}, &greenplumStub{})
+		err = doUpgrade(db, "", &InitializeConfig{}, &greenplumStub{})
 		if !xerrors.Is(err, expectedError) {
 			t.Errorf("returned error %#v want %#v", err, expectedError)
 		}
@@ -246,7 +266,7 @@ func TestUpgradeMirrors(t *testing.T) {
 			return nil
 		}
 
-		err := UpgradeMirrors("/state/dir", 6000, conf, stub)
+		err = doUpgrade(db, "/state/dir", conf, stub)
 
 		var merr *multierror.Error
 		if !xerrors.As(err, &merr) {
@@ -277,9 +297,101 @@ func TestUpgradeMirrors(t *testing.T) {
 			return expectedErr
 		}}
 
-		err := UpgradeMirrors("/state/dir", 6000, &InitializeConfig{}, stub)
+		err = doUpgrade(db, "/state/dir", &InitializeConfig{}, stub)
 		if !xerrors.Is(err, expectedErr) {
 			t.Errorf("returned error %#v want %#v", err, expectedErr)
 		}
 	})
+}
+
+func TestUpgradeMirrors(t *testing.T) {
+	stub := &greenplumStub{
+		func(utility string, arguments ...string) error {
+			return nil
+		},
+	}
+
+	t.Run("creates db connection with correct data source settings", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		if err != nil {
+			t.Fatalf("couldn't create sqlmock: %v", err)
+		}
+		defer testutils.FinishMock(mock, t)
+
+		_, writePipe, err := os.Pipe()
+		utils.System.Create = func(name string) (*os.File, error) {
+			return writePipe, nil
+		}
+
+		expectFtsProbe(mock)
+		expectMirrorsAndReturn(mock, "t")
+
+		utils.System.SqlOpen = func(driverName, dataSourceName string) (*sql.DB, error) {
+			expected := "postgresql://localhost:123/template1?gp_session_role=utility&search_path="
+			if dataSourceName != expected {
+				t.Errorf("got: %q want: %q", dataSourceName, expected)
+			}
+
+			return db, nil
+		}
+
+		err = UpgradeMirrors("", 123, &InitializeConfig{}, stub)
+		if err != nil {
+			t.Errorf("unexpected error: %#v", err)
+		}
+	})
+
+	t.Run("returns error when failing to open db connection", func(t *testing.T) {
+		expected := errors.New("failed to open db")
+		utils.System.SqlOpen = func(driverName, dataSourceName string) (*sql.DB, error) {
+			return nil, expected
+		}
+
+		err := UpgradeMirrors("", 123, &InitializeConfig{}, stub)
+		if !xerrors.Is(err, expected) {
+			t.Errorf("got: %#v want: %#v", err, expected)
+		}
+	})
+}
+
+func TestWaitForFTS(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("couldn't create sqlmock: %v", err)
+	}
+	defer testutils.FinishMock(mock, t)
+
+	t.Run("succeeds", func(t *testing.T) {
+		expectFtsProbe(mock)
+		expectMirrorsAndReturn(mock, "t")
+
+		err = waitForFTS(db)
+		if err != nil {
+			t.Errorf("unexpected error: %#v", err)
+		}
+	})
+
+	t.Run("waits for mirrors to come up", func(t *testing.T) {
+		expectFtsProbe(mock)
+		expectMirrorsAndReturn(mock, "f")
+		expectFtsProbe(mock)
+		expectMirrorsAndReturn(mock, "t")
+
+		err = waitForFTS(db)
+		if err != nil {
+			t.Errorf("unexpected error: %#v", err)
+		}
+	})
+}
+
+func expectFtsProbe(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(`SELECT gp_request_fts_probe_scan\(\);`).
+		WillReturnRows(sqlmock.NewRows([]string{"gp_request_fts_probe_scan"}).AddRow("t"))
+}
+
+func expectMirrorsAndReturn(mock sqlmock.Sqlmock, up string) {
+	mock.ExpectQuery(`SELECT every\(status = 'u'\)
+							FROM gp_segment_configuration
+							WHERE role = 'm'`).
+		WillReturnRows(sqlmock.NewRows([]string{"every"}).AddRow(up))
 }
