@@ -374,12 +374,6 @@ type Config struct {
 	UseLinkMode bool
 }
 
-type PortAssignments struct {
-	Master    int
-	Standby   int
-	Primaries []int
-}
-
 func (c *Config) Load(r io.Reader) error {
 	dec := json.NewDecoder(r)
 	return dec.Decode(c)

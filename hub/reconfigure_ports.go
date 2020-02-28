@@ -139,8 +139,6 @@ func ClonePortsFromCluster(db *sql.DB, src *utils.Cluster) (err error) {
 			if err != nil {
 				return err
 			}
-
-			// recovery conf somewhere here...
 		}
 	}
 
