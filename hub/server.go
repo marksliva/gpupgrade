@@ -353,9 +353,10 @@ func (s *Server) closeAgentConns() {
 }
 
 type InitializeConfig struct {
-	Standby    utils.SegConfig
-	Master	   utils.SegConfig
-	Primaries  []utils.SegConfig
+	Standby   utils.SegConfig
+	Master    utils.SegConfig
+	Primaries []utils.SegConfig
+	Mirrors   []utils.SegConfig
 }
 
 // Config contains all the information that will be persisted to/loaded from
@@ -364,8 +365,8 @@ type Config struct {
 	Source *utils.Cluster
 	Target *utils.Cluster
 
-	// TargetPorts is the list of temporary ports to be used for the target
-	// cluster. It's assigned during initial configuration.
+	// TargetInitializeConfig contains all the info needed to initialize the
+	// target cluster's master, standby, primaries and mirrors.
 	TargetInitializeConfig InitializeConfig
 
 	Port        int

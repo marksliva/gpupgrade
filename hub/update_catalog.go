@@ -202,18 +202,13 @@ func (s *Server) UpdateGpSegmentConfiguration(db *sql.DB) (err error) {
 			return err
 		}
 
-		// TODO: Uncomment the below code when we have the complete functionality
-		// Currently we don't rename the data directories on disk
-		// for standby, so don't update the port or data directories else we can't upgrade
-		// 5 to 6 clusters.
-		// Also there are no mirrors in the target cluster yet, so technically
-		// this is dead code.
-		// if mirror, ok := s.Source.Mirrors[content]; ok {
-		//	err := updateConfiguration(tx, mirror)
-		//	if err != nil {
-		//		return err
-		//	}
-		//}
+		if mirror, ok := s.Source.Mirrors[content]; ok {
+			// TODO: do we need to temporarily skip the standby?
+			err := updateConfiguration(tx, mirror)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
