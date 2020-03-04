@@ -8,8 +8,6 @@ setup_state_dir() {
 }
 
 teardown_new_cluster() {
-    local NEW_CLUSTER="$(gpupgrade config show --new-datadir)"
-
     if [ -n "$NEW_CLUSTER" ]; then
         delete_cluster $NEW_CLUSTER
     fi
@@ -39,6 +37,8 @@ teardown() {
         --old-port="${PGPORT}" \
         --disk-free-ratio 0 \
         --verbose
+
+    NEW_CLUSTER="$(gpupgrade config show --new-datadir)"
 
     gpupgrade execute --verbose
 
@@ -83,6 +83,7 @@ check_mirror_validity() {
 
 check_segments_are_synchronized() {
     for i in {1..10}; do
+        psql -d postgres -c "SELECT gp_request_fts_probe_scan();"
         run psql -t -A -d postgres -c "SELECT count(*) FROM gp_segment_configuration WHERE content <> -1 AND mode = 'n'"
         if [ "$output" = "0" ]; then
             return 0
@@ -101,6 +102,7 @@ kill_primaries() {
 
 check_can_start_transactions() {
     for i in {1..10}; do
+        psql -d postgres -c "SELECT gp_request_fts_probe_scan();"
         run psql -t -A -d postgres -c "BEGIN; CREATE TEMP TABLE temp_test(a int) DISTRIBUTED RANDOMLY; COMMIT"
         if [[ $status -eq 0 ]]; then
             return 0

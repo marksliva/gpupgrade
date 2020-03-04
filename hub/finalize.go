@@ -41,6 +41,7 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 
 			// TODO: Persist the standby to config.json and update the
 			//  source & target clusters.
+			// todo: replace StandbyConfig with SegInfo and pass the TargetInitializeConfig.Standby directly in
 			standby := s.TargetInitializeConfig.Standby
 			return UpgradeStandby(targetRunner, StandbyConfig{
 				Port:          standby.Port,

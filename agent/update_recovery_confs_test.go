@@ -45,10 +45,10 @@ func TestUpdateRecoveryConfPorts(t *testing.T) {
 		called := false
 		expectedArgs := [][]string{
 			{
-				"-c", "sed -i'.bak' 's/port=1234/port=8000/' /tmp/datadirs/mirror1_upgrade/gpseg0/recovery.conf",
+				"-i.bak", "s/port=1234/port=8000/", "/tmp/datadirs/mirror1_upgrade/gpseg0/recovery.conf",
 			},
 			{
-				"-c", "sed -i'.bak' 's/port=1235/port=8001/' /tmp/datadirs/mirror2_upgrade/gpseg1/recovery.conf",
+				"-i.bak", "s/port=1235/port=8001/", "/tmp/datadirs/mirror2_upgrade/gpseg1/recovery.conf",
 			},
 		}
 		calls := 0
@@ -56,8 +56,8 @@ func TestUpdateRecoveryConfPorts(t *testing.T) {
 		cmd := exectest.NewCommandWithVerifier(sedMain, func(path string, args ...string) {
 			called = true
 
-			if path != "bash" {
-				t.Errorf(`got: %q want "bash"`, path)
+			if path != "sed" {
+				t.Errorf(`got: %q want "sed"`, path)
 			}
 
 			expected := expectedArgs[calls]

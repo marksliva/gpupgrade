@@ -45,12 +45,12 @@ func UpdateRecoveryConfs(ctx context.Context, agentConns []*Connection, sourceCl
 	wg.Wait()
 	close(errChan)
 
-	var mErr multierror.Error
+	var mErr error
 	for err := range errChan {
 		if err != nil {
-			mErr = *multierror.Append(&mErr, err)
+			mErr = multierror.Append(mErr, err).ErrorOrNil()
 		}
 	}
 
-	return mErr.ErrorOrNil()
+	return mErr
 }
