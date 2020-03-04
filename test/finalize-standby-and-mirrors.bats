@@ -9,7 +9,7 @@ setup_state_dir() {
 
 teardown_new_cluster() {
     if [ -n "$NEW_CLUSTER" ]; then
-        delete_cluster $NEW_CLUSTER
+        delete_finalized_cluster $NEW_CLUSTER
     fi
 }
 
