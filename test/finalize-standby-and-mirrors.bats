@@ -22,7 +22,10 @@ setup() {
 }
 
 teardown() {
-    skip_if_no_gpdb
+    # XXX Beware, BATS_TEST_SKIPPED is not a documented export.
+    if [ -n "${BATS_TEST_SKIPPED}" ]; then
+        return
+    fi
 
     teardown_new_cluster
     gpupgrade kill-services
@@ -36,7 +39,7 @@ teardown() {
         --new-bindir="$GPHOME/bin" \
         --old-port="${PGPORT}" \
         --disk-free-ratio 0 \
-        --verbose
+        --verbose 3>&-
 
     NEW_CLUSTER="$(gpupgrade config show --new-datadir)"
 
@@ -90,6 +93,8 @@ check_segments_are_synchronized() {
         fi
         sleep 5
     done
+
+    echo "failed to synchronize within time limit"
     return 1
 }
 
@@ -109,5 +114,7 @@ check_can_start_transactions() {
         fi
         sleep 5
     done
+
+    echo "failed to start transactions within time limit"
     return 1
 }
