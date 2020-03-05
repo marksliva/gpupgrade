@@ -95,16 +95,20 @@ teardown_new_cluster() {
 # Writes the pieces of gp_segment_configuration that we need to ensure remain
 # the same across upgrade, one segment per line, sorted by content ID.
 get_segment_configuration() {
+    # XXX add the standby back
     $PSQL -c "
         select content, role, hostname, port, datadir
           from gp_segment_configuration
+          where content <> -1 or role = 'p'
           order by content, role
     "
 }
 
 # Writes all datadirs in the system to stdout, one per line.
 get_datadirs() {
-    $PSQL -Atc "select datadir from gp_segment_configuration"
+    # XXX add the standby back
+    $PSQL -Atc "select datadir from gp_segment_configuration
+        where content <> -1 or role = 'p'"
 }
 
 get_standby_status() {
