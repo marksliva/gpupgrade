@@ -77,6 +77,10 @@ func TestRenameSegmentDataDirs(t *testing.T) {
 		{ContentID: 1, DbID: 3, Port: 25433, Hostname: "sdw2", DataDir: "/data/dbfast2/seg2", Role: utils.PrimaryRole, PreferredRole: utils.PrimaryRole},
 		{ContentID: 2, DbID: 4, Port: 25434, Hostname: "sdw1", DataDir: "/data/dbfast1/seg3", Role: utils.PrimaryRole, PreferredRole: utils.PrimaryRole},
 		{ContentID: 3, DbID: 5, Port: 25435, Hostname: "sdw2", DataDir: "/data/dbfast2/seg4", Role: utils.PrimaryRole, PreferredRole: utils.PrimaryRole},
+		{ContentID: 0, DbID: 6, Port: 35432, Hostname: "sdw1", DataDir: "/data/dbfast_mirror1/seg1", Role: utils.MirrorRole, PreferredRole: utils.MirrorRole},
+		{ContentID: 1, DbID: 7, Port: 35433, Hostname: "sdw2", DataDir: "/data/dbfast_mirror2/seg2", Role: utils.MirrorRole, PreferredRole: utils.MirrorRole},
+		{ContentID: 2, DbID: 8, Port: 35434, Hostname: "sdw1", DataDir: "/data/dbfast_mirror1/seg3", Role: utils.MirrorRole, PreferredRole: utils.MirrorRole},
+		{ContentID: 3, DbID: 9, Port: 35435, Hostname: "sdw2", DataDir: "/data/dbfast_mirror2/seg4", Role: utils.MirrorRole, PreferredRole: utils.MirrorRole},
 	})
 
 	testhelper.SetupTestLogger() // initialize gplog
@@ -92,6 +96,9 @@ func TestRenameSegmentDataDirs(t *testing.T) {
 				Pairs: []*idl.RenamePair{{
 					Src: "/data/dbfast1_upgrade",
 					Dst: "/data/dbfast1",
+				}, {
+					Src: "/data/dbfast_mirror1_upgrade",
+					Dst: "/data/dbfast_mirror1",
 				}},
 			},
 		).Return(&idl.RenameDirectoriesReply{}, nil)
@@ -103,6 +110,9 @@ func TestRenameSegmentDataDirs(t *testing.T) {
 				Pairs: []*idl.RenamePair{{
 					Src: "/data/dbfast2_upgrade",
 					Dst: "/data/dbfast2",
+				}, {
+					Src: "/data/dbfast_mirror2_upgrade",
+					Dst: "/data/dbfast_mirror2",
 				}},
 			},
 		).Return(&idl.RenameDirectoriesReply{}, nil)
@@ -129,6 +139,9 @@ func TestRenameSegmentDataDirs(t *testing.T) {
 				Pairs: []*idl.RenamePair{{
 					Src: "/data/dbfast1",
 					Dst: "/data/dbfast1_old",
+				}, {
+					Src: "/data/dbfast_mirror1",
+					Dst: "/data/dbfast_mirror1_old",
 				}},
 			},
 		).Return(&idl.RenameDirectoriesReply{}, nil)
@@ -140,6 +153,9 @@ func TestRenameSegmentDataDirs(t *testing.T) {
 				Pairs: []*idl.RenamePair{{
 					Src: "/data/dbfast2",
 					Dst: "/data/dbfast2_old",
+				}, {
+					Src: "/data/dbfast_mirror2",
+					Dst: "/data/dbfast_mirror2_old",
 				}},
 			},
 		).Return(&idl.RenameDirectoriesReply{}, nil)
@@ -162,24 +178,14 @@ func TestRenameSegmentDataDirs(t *testing.T) {
 		client := mock_idl.NewMockAgentClient(ctrl)
 		client.EXPECT().RenameDirectories(
 			gomock.Any(),
-			&idl.RenameDirectoriesRequest{
-				Pairs: []*idl.RenamePair{{
-					Src: "/data/dbfast1",
-					Dst: "/data/dbfast1_upgrade",
-				}},
-			},
+			gomock.Any(),
 		).Return(&idl.RenameDirectoriesReply{}, nil)
 
 		expected := errors.New("permission denied")
 		failedClient := mock_idl.NewMockAgentClient(ctrl)
 		failedClient.EXPECT().RenameDirectories(
 			gomock.Any(),
-			&idl.RenameDirectoriesRequest{
-				Pairs: []*idl.RenamePair{{
-					Src: "/data/dbfast2",
-					Dst: "/data/dbfast2_upgrade",
-				}},
-			},
+			gomock.Any(),
 		).Return(nil, expected)
 
 		agentConns := []*hub.Connection{

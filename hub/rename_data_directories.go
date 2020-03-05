@@ -68,14 +68,18 @@ func RenameSegmentDataDirs(agentConns []*Connection,
 	errs := make(chan error, len(agentConns))
 
 	for _, conn := range agentConns {
-		wg.Add(1)
+		conn := conn
+		segmentsOnHost := func(seg *utils.SegConfig) bool {
+			return seg.ContentID != -1 && seg.Hostname == conn.Hostname
+		}
 
+		wg.Add(1)
 		go func(c *Connection) {
 			defer wg.Done()
 
-			segments, err := cluster.SegmentsOn(c.Hostname)
-			if err != nil {
-				errs <- err
+			segments := cluster.SelectSegments(segmentsOnHost)
+			if len(segments) == 0 {
+				errs <- utils.UnknownHostError{conn.Hostname}
 				return
 			}
 
@@ -83,13 +87,22 @@ func RenameSegmentDataDirs(agentConns []*Connection,
 			// only call rename once on the parent directory.
 			// For example, /data/primary/gpseg1 and /data/primary/gpseg2
 			// only call rename once for /data/primary.
-			parentDirs := make(map[string]bool)
+			// NOTE: we keep the iteration stable for testing purposes; hence
+			// the combined map+slice approach.
+			alreadyDone := make(map[string]bool)
+			var parentDirs []string
 			for _, seg := range segments {
-				parentDirs[filepath.Dir(seg.DataDir)] = true
+				dir := filepath.Dir(seg.DataDir)
+				if alreadyDone[dir] {
+					continue
+				}
+
+				parentDirs = append(parentDirs, dir)
+				alreadyDone[dir] = true
 			}
 
 			req := new(idl.RenameDirectoriesRequest)
-			for dir := range parentDirs {
+			for _, dir := range parentDirs {
 				dst := dir
 				src := dir
 				if addSuffixToSrc {
@@ -101,7 +114,7 @@ func RenameSegmentDataDirs(agentConns []*Connection,
 				req.Pairs = append(req.Pairs, &idl.RenamePair{Src: src, Dst: dst})
 			}
 
-			_, err = c.AgentClient.RenameDirectories(context.Background(), req)
+			_, err := c.AgentClient.RenameDirectories(context.Background(), req)
 			if err != nil {
 				gplog.Error("renaming segment data directories on host %s: %s", c.Hostname, err.Error())
 				errs <- err
