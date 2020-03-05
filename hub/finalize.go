@@ -68,6 +68,12 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 		return s.UpdateCatalogAndClusterConfig(streams)
 	})
 
+	if s.Source.HasMirrors() {
+		st.Run(idl.Substep_FINALIZE_UPDATE_RECOVERY_CONFS, func(streams step.OutStreams) error {
+			return UpdateRecoveryConfs(context.Background(), s.agentConns, s.Source, s.Target, s.TargetInitializeConfig)
+		})
+	}
+
 	st.Run(idl.Substep_FINALIZE_RENAME_DATA_DIRECTORIES, func(_ step.OutStreams) error {
 		return s.RenameDataDirectories()
 	})
@@ -75,12 +81,6 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 	st.Run(idl.Substep_FINALIZE_UPDATE_TARGET_CONF_FILES, func(_ step.OutStreams) error {
 		return s.UpdateConfFiles()
 	})
-
-	if s.Source.HasMirrors() {
-		st.Run(idl.Substep_FINALIZE_UPDATE_RECOVERY_CONFS, func(streams step.OutStreams) error {
-			return UpdateRecoveryConfs(context.Background(), s.agentConns, s.Source, s.Target, s.TargetInitializeConfig)
-		})
-	}
 
 	st.Run(idl.Substep_FINALIZE_START_TARGET_CLUSTER, func(streams step.OutStreams) error {
 		return StartCluster(streams, s.Target, false)
