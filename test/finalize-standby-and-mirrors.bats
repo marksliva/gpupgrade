@@ -41,11 +41,11 @@ teardown() {
         --disk-free-ratio 0 \
         --verbose 3>&-
 
-    NEW_CLUSTER="$(gpupgrade config show --new-datadir)"
-
     gpupgrade execute --verbose
 
     gpupgrade finalize --verbose
+
+    NEW_CLUSTER="$(gpupgrade config show --new-datadir)"
 
     local new_datadir=$(gpupgrade config show --new-datadir)
     local actual_standby_status=$(gpstate -d "${new_datadir}")

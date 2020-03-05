@@ -64,15 +64,15 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 		return StopCluster(streams, s.Target, false)
 	})
 
-	st.Run(idl.Substep_FINALIZE_UPDATE_TARGET_CATALOG_AND_CLUSTER_CONFIG, func(streams step.OutStreams) error {
-		return s.UpdateCatalogAndClusterConfig(streams)
-	})
-
 	if s.Source.HasMirrors() {
 		st.Run(idl.Substep_FINALIZE_UPDATE_RECOVERY_CONFS, func(streams step.OutStreams) error {
 			return UpdateRecoveryConfs(context.Background(), s.agentConns, s.Source, s.Target, s.TargetInitializeConfig)
 		})
 	}
+
+	st.Run(idl.Substep_FINALIZE_UPDATE_TARGET_CATALOG_AND_CLUSTER_CONFIG, func(streams step.OutStreams) error {
+		return s.UpdateCatalogAndClusterConfig(streams)
+	})
 
 	st.Run(idl.Substep_FINALIZE_RENAME_DATA_DIRECTORIES, func(_ step.OutStreams) error {
 		return s.RenameDataDirectories()
