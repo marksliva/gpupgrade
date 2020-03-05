@@ -73,6 +73,8 @@ func TestRenameMasterDataDir(t *testing.T) {
 
 func TestRenameSegmentDataDirs(t *testing.T) {
 	c := hub.MustCreateCluster(t, []utils.SegConfig{
+		{ContentID: -1, DbID: 1, Port: 25431, Hostname: "mdw", DataDir: "/data/master/seg-1", Role: utils.PrimaryRole, PreferredRole: utils.PrimaryRole},
+		{ContentID: -1, DbID: 10, Port: 25431, Hostname: "sdw", DataDir: "/data/standby", Role: utils.MirrorRole, PreferredRole: utils.MirrorRole},
 		{ContentID: 0, DbID: 2, Port: 25432, Hostname: "sdw1", DataDir: "/data/dbfast1/seg1", Role: utils.PrimaryRole, PreferredRole: utils.PrimaryRole},
 		{ContentID: 1, DbID: 3, Port: 25433, Hostname: "sdw2", DataDir: "/data/dbfast2/seg2", Role: utils.PrimaryRole, PreferredRole: utils.PrimaryRole},
 		{ContentID: 2, DbID: 4, Port: 25434, Hostname: "sdw1", DataDir: "/data/dbfast1/seg3", Role: utils.PrimaryRole, PreferredRole: utils.PrimaryRole},
@@ -88,6 +90,17 @@ func TestRenameSegmentDataDirs(t *testing.T) {
 	t.Run("transforms source directories", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
+
+		client0 := mock_idl.NewMockAgentClient(ctrl)
+		client0.EXPECT().RenameDirectories(
+			gomock.Any(),
+			&idl.RenameDirectoriesRequest{
+				Pairs: []*idl.RenamePair{{
+					Src: "/data/standby_upgrade",
+					Dst: "/data/standby",
+				}},
+			},
+		).Return(&idl.RenameDirectoriesReply{}, nil)
 
 		client1 := mock_idl.NewMockAgentClient(ctrl)
 		client1.EXPECT().RenameDirectories(
@@ -118,6 +131,7 @@ func TestRenameSegmentDataDirs(t *testing.T) {
 		).Return(&idl.RenameDirectoriesReply{}, nil)
 
 		agentConns := []*hub.Connection{
+			{nil, client0, "sdw", nil},
 			{nil, client1, "sdw1", nil},
 			{nil, client2, "sdw2", nil},
 		}

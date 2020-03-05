@@ -70,7 +70,7 @@ func RenameSegmentDataDirs(agentConns []*Connection,
 	for _, conn := range agentConns {
 		conn := conn
 		segmentsOnHost := func(seg *utils.SegConfig) bool {
-			return seg.ContentID != -1 && seg.Hostname == conn.Hostname
+			return (seg.ContentID != -1 || seg.Role == utils.MirrorRole) && seg.Hostname == conn.Hostname
 		}
 
 		wg.Add(1)
@@ -92,7 +92,14 @@ func RenameSegmentDataDirs(agentConns []*Connection,
 			alreadyDone := make(map[string]bool)
 			var parentDirs []string
 			for _, seg := range segments {
-				dir := filepath.Dir(seg.DataDir)
+				// the standby is not nested like the other directories
+				// todo: need a more robust way to handle this case
+				var dir string
+				if seg.ContentID == -1 {
+					dir = seg.DataDir
+				} else {
+					dir = filepath.Dir(seg.DataDir)
+				}
 				if alreadyDone[dir] {
 					continue
 				}

@@ -46,6 +46,7 @@ teardown() {
     gpupgrade finalize --verbose
 
     NEW_CLUSTER="$(gpupgrade config show --new-datadir)"
+    GPHOME_NEW=$GPHOME
 
     local new_datadir=$(gpupgrade config show --new-datadir)
     local actual_standby_status=$(gpstate -d "${new_datadir}")
