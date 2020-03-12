@@ -56,7 +56,7 @@ func TestUILoop(t *testing.T) {
 		d := bufferStandardDescriptors(t)
 		defer d.Close()
 
-		err := commanders.UILoop(&msgs, true)
+		_, err := commanders.UILoop(&msgs, true)
 		if err != nil {
 			t.Errorf("UILoop() returned %#v", err)
 		}
@@ -77,7 +77,7 @@ func TestUILoop(t *testing.T) {
 	t.Run("returns an error when a non io.EOF error is encountered", func(t *testing.T) {
 		expected := xerrors.New("bengie")
 
-		err := commanders.UILoop(&errStream{expected}, true)
+		_, err := commanders.UILoop(&errStream{expected}, true)
 		if err != expected {
 			t.Errorf("returned %#v want %#v", err, expected)
 		}
@@ -111,7 +111,7 @@ func TestUILoop(t *testing.T) {
 		d := bufferStandardDescriptors(t)
 		defer d.Close()
 
-		err := commanders.UILoop(&msgs, true)
+		_, err := commanders.UILoop(&msgs, true)
 		if err != nil {
 			t.Errorf("UILoop() returned %#v", err)
 		}
@@ -160,7 +160,7 @@ func TestUILoop(t *testing.T) {
 		d := bufferStandardDescriptors(t)
 		defer d.Close()
 
-		err := commanders.UILoop(&msgs, false)
+		_, err := commanders.UILoop(&msgs, false)
 		if err != nil {
 			t.Errorf("UILoop() returned %#v", err)
 		}

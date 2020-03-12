@@ -107,8 +107,8 @@ func (s *Server) Finalize(_ *idl.FinalizeRequest, stream idl.CliToHub_FinalizeSe
 	data["target-datadir"] = s.Target.MasterDataDir()
 
 	err = stream.Send(&idl.Message{
-		Contents: &idl.Message_Data{
-			Data: &idl.DataMap{Data: data},
+		Contents: &idl.Message_Response{
+			Response: &idl.Response{Data: data},
 		},
 	})
 
