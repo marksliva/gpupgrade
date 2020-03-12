@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/pkg/errors"
@@ -139,14 +140,19 @@ func Finalize(client idl.CliToHubClient, verbose bool) error {
 		return xerrors.Errorf("Finalize: %w", err)
 	}
 
-	port, ok := dataMap["target-port"]
-	if !ok {
-		return xerrors.New("did not get back a target-port from finalize step")
+	port, portOk := dataMap[hub.UIFinalizeTargetPort]
+	var missingKeys []string
+	if !portOk {
+		missingKeys = append(missingKeys, hub.UIFinalizeTargetPort)
 	}
 
-	datadir, ok := dataMap["target-datadir"]
-	if !ok {
-		return xerrors.New("did not get back a target-datadir from finalize step")
+	datadir, datadirOk := dataMap[hub.UIFinalizeTargetDatadir]
+	if !datadirOk {
+		missingKeys = append(missingKeys, hub.UIFinalizeTargetDatadir)
+	}
+
+	if len(missingKeys) > 0 {
+		return xerrors.Errorf("did not receive the expected configuration values: %s", strings.Join(missingKeys, ", "))
 	}
 
 	fmt.Println("")
@@ -204,6 +210,7 @@ func UILoop(stream receiver, verbose bool) (map[string]string, error) {
 
 		case *idl.Message_Response:
 			// NOTE: the latest message will clobber earlier keys
+			// todo: should we throw an error when a collision occurs?
 			for k, v := range x.Response.Data {
 				data[k] = v
 			}
