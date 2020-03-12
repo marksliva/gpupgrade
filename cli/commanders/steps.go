@@ -202,9 +202,9 @@ func UILoop(stream receiver, verbose bool) (map[string]string, error) {
 				fmt.Println()
 			}
 
-		case *idl.Message_Data:
+		case *idl.Message_Response:
 			// NOTE: the latest message will clobber earlier keys
-			for k, v := range x.Data.Data {
+			for k, v := range x.Response.Data {
 				data[k] = v
 			}
 

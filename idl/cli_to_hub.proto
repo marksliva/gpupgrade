@@ -105,11 +105,11 @@ message Message {
   oneof contents {
     Chunk chunk = 1;
     SubstepStatus status = 2;
-    DataMap data = 3;
+    Response response = 3;
   }
 }
 
-message DataMap {
+message Response {
   map<string,string> data = 1;
 }
 
