@@ -21,7 +21,7 @@ import (
 )
 
 var sourceVersions = []string{"5"}
-var targetVersions = []string{"6.1.0"}
+var targetVersions = []string{"6.5.0"}
 
 type UpgradeJobs struct {
 	Source, Target string
@@ -43,8 +43,8 @@ func init() {
 	for _, sourceVersion := range sourceVersions {
 		for _, targetVersion := range targetVersions {
 			upgradeJobs = append(upgradeJobs, &UpgradeJobs{
-				Source:        sourceVersion,
-				Target:        targetVersion,
+				Source: sourceVersion,
+				Target: targetVersion,
 			})
 			upgradeJobs = append(upgradeJobs, &UpgradeJobs{
 				Source:        sourceVersion,
@@ -52,8 +52,8 @@ func init() {
 				PrimariesOnly: true,
 			})
 			upgradeJobs = append(upgradeJobs, &UpgradeJobs{
-				Source:        sourceVersion,
-				Target:        targetVersion,
+				Source:    sourceVersion,
+				Target:    targetVersion,
 				NoStandby: true,
 			})
 		}

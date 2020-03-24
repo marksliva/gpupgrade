@@ -84,14 +84,18 @@ for host in "${hosts[@]}"; do
     ssh centos@$host "sudo mv /tmp/gpupgrade /usr/local/bin"
 done
 
-echo 'Loading SQL dump into source cluster...'
-time ssh mdw bash <<EOF
-    set -eux -o pipefail
+# todo: remove this conditional, and move it to a new task
+# or, dump the load-retail-data once, and load that dump file here
+if [ -f /tmp/dump.sql.xz ]; then
+    echo 'Loading SQL dump into source cluster...'
+    time ssh mdw bash <<EOF
+        set -eux -o pipefail
 
-    source ${GPHOME_OLD}/greenplum_path.sh
-    export PGOPTIONS='--client-min-messages=warning'
-    unxz < /tmp/dump.sql.xz | psql -f - postgres
+        source ${GPHOME_OLD}/greenplum_path.sh
+        export PGOPTIONS='--client-min-messages=warning'
+        unxz < /tmp/dump.sql.xz | psql -f - postgres
 EOF
+fi
 
 # Dump the old cluster for later comparison.
 dump_sql $MASTER_PORT /tmp/old.sql
