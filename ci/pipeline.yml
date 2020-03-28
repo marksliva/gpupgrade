@@ -36,7 +36,8 @@ resources:
   source:
     uri: ((retail-demo-git-remote))
     private_key: ((retail-demo-git-key))
-    # todo: change to ((retail-demo-git-branch))
+    # TODO: change to ((retail-demo-git-branch)) once PR #3 and any additional
+    #  work is merged.
     branch: gpupgrade
 
 
@@ -571,7 +572,7 @@ jobs:
           number_of_nodes: 3
           PLATFORM: centos6
           disk_size: 1000
-          ccp_reap_minutes: 180 # XXX: Remove this before PR'ing
+          ccp_reap_minutes: 480 # XXX: Remove this before PR'ing
     - task: gen_old_cluster
       file: ccp_src/ci/tasks/gen_cluster.yml
       params:
