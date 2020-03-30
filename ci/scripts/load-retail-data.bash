@@ -64,6 +64,8 @@ scp -qr retail_demo_src mdw:/home/gpadmin/industry_demo/
 
 # create database and tables
 ssh mdw <<EOF
+    set -x
+
     source ${GPHOME_OLD}/greenplum_path.sh
     cd /home/gpadmin/industry_demo
     psql -d template1 -f data_generation/prep_database.sql
@@ -75,6 +77,8 @@ for host in "${hosts[@]}"; do
     scp -qr retail_demo_src/demo_data/ $host:/data/
 
     ssh -n $host "
+        set -x
+
         source ${GPHOME_OLD}/greenplum_path.sh
         gpfdist -d /data/demo_data -p 8081 -l /data/demo_data/gpfdist.8081.log &
         gpfdist -d /data/demo_data -p 8082 -l /data/demo_data/gpfdist.8082.log &
@@ -83,6 +87,8 @@ done
 
 # prepare and generate data
 time ssh mdw <<EOF
+    set -x
+
     source ${GPHOME_OLD}/greenplum_path.sh
 
     # Why do we need to restart in order to have the bm.so extension take affect?
@@ -114,6 +120,8 @@ EOF
 
 # remove gphdfs from the source 5X cluster
 ssh mdw "
+    set -x
+
     source ${GPHOME_OLD}/greenplum_path.sh
     psql -d postgres <<SQL_EOF
         CREATE OR REPLACE FUNCTION drop_gphdfs() RETURNS VOID AS \\\$\\\$
