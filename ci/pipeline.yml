@@ -36,9 +36,7 @@ resources:
   source:
     uri: ((retail-demo-git-remote))
     private_key: ((retail-demo-git-key))
-    # TODO: change to ((retail-demo-git-branch)) once PR #3 and any additional
-    #  work is merged.
-    branch: gpupgrade
+    branch: ((retail-demo-git-branch))
 
 
 - name: bin_gpdb5_centos6
