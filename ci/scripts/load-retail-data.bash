@@ -126,7 +126,10 @@ time ssh mdw <<EOF
     psql -d gpdb_demo -e -f data_generation/verify_data.sql
 EOF
 
-# remove gphdfs from the source 5X cluster
+# perform upgrade fixups:
+# - remove gphdfs from the source 5X cluster
+# - drop partition indices
+# - match root/child partition schemas
 ssh mdw "
     set -x
 
@@ -152,5 +155,23 @@ ssh mdw "
         SELECT drop_gphdfs();
 
         DROP FUNCTION drop_gphdfs();
+
+        DROP INDEX retail_demo.order_lineitems_cust_id;
+        DROP INDEX retail_parts.order_lineitems_cust_id_1_prt_default_part;
+        DROP INDEX retail_parts.order_lineitems_cust_id_1_prt_today;
+        DROP INDEX retail_parts.order_lineitems_cust_id_1_prt_2;
+        DROP INDEX retail_parts.order_lineitems_cust_id_1_prt_3;
+        DROP INDEX retail_parts.order_lineitems_cust_id_1_prt_4;
+        DROP INDEX retail_parts.order_lineitems_cust_id_1_prt_5;
+        DROP INDEX retail_parts.order_lineitems_cust_id_1_prt_6;
+        DROP INDEX retail_parts.order_lineitems_cust_id_1_prt_7;
+        DROP INDEX retail_parts.order_lineitems_cust_id_1_prt_8;
+        DROP INDEX retail_parts.order_lineitems_cust_id_1_prt_9;
+        DROP INDEX retail_parts.order_lineitems_cust_id_1_prt_10;
+        DROP INDEX retail_parts.order_lineitems_cust_id_1_prt_11;
+
+        ALTER TABLE retail_demo.order_lineitems SET SCHEMA retail_parts;
+        ALTER TABLE retail_demo.shipment_lineitems SET SCHEMA retail_parts;
+        ALTER TABLE retail_demo.orders SET SCHEMA retail_parts;
 SQL_EOF
 "
