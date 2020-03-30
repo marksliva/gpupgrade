@@ -602,10 +602,13 @@ jobs:
               cp -R cluster_env_files/.ssh /root/.ssh
 
               # Install the new binary.
-              for host in $(cat cluster_env_files/hostfile_all); do
-                  scp rpm_gpdb_new/*.rpm "${host}:/tmp/bin_gpdb_new.rpm"
-                  ssh -ttn centos@"$host" sudo yum install -y /tmp/bin_gpdb_new.rpm
-              done
+              # NOTE: the xargs construction here is for parallel execution. It
+              # speeds things up, but output is interleaved, which makes
+              # debugging more difficult.
+              cat cluster_env_files/hostfile_all | xargs -n 1 -P 10 -I'{}' sh -c '
+                  scp rpm_gpdb_new/*.rpm "{}:/tmp/bin_gpdb_new.rpm"
+                  ssh -ttn centos@"{}" sudo yum install -y /tmp/bin_gpdb_new.rpm
+              '
     - task: load_retail_data
       file: gpupgrade_src/ci/tasks/load-retail-data.yml
       params:
