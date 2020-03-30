@@ -47,8 +47,15 @@ pushd retail_demo_src/box_muller/
   done
 popd
 
-# extract demo_data for both mdw and segments
 pushd retail_demo_src
+    # make modifications for our use case
+    sed -i.bak -e 's/ORDERROWS .*$/ORDERROWS 1/' gpdb_demo_conf.sql
+    sed -i.bak -e 's/CUSTOMERROWS .*$/CUSTOMERROWS 1/' gpdb_demo_conf.sql
+    sed -i.bak -e 's/PRODUCTROWS .*$/PRODUCTROWS 1/' gpdb_demo_conf.sql
+    sed -i.bak -e 's/IC_MAX .*$/IC_MAX 2/' gpdb_demo_conf.sql
+    sed -i.bak -e "s/DATA_END '.*$/DATA_END '\\\\'2006-3-31\\\\''/" gpdb_demo_conf.sql
+
+    # extract demo_data for both mdw and segments
     tar xf demo_data.tar.xz
 popd
 
