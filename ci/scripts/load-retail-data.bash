@@ -24,9 +24,6 @@ export SOURCE_MASTER_PORT=5432
 scp -qr mdw:${GPHOME_OLD} ${GPHOME_OLD}
 scp -qr mdw:${GPHOME_NEW} ${GPHOME_NEW}
 
-# TODO: remove this once we fix the container by merging PR #61.
-source /opt/gcc_env.sh
-
 pushd retail_demo_src/box_muller/
   # make bm.so for source cluster
   make PG_CONFIG=${GPHOME_OLD}/bin/pg_config clean all
