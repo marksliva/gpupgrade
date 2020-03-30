@@ -68,8 +68,8 @@ ssh mdw <<EOF
 
     source ${GPHOME_OLD}/greenplum_path.sh
     cd /home/gpadmin/industry_demo
-    psql -d template1 -f data_generation/prep_database.sql
-    psql -d gpdb_demo -f data_generation/prep_external_tables.sql
+    psql -d template1 -e -f data_generation/prep_database.sql
+    psql -d gpdb_demo -e -f data_generation/prep_external_tables.sql
 EOF
 
 # copy extracted demo_data to segments and start gpfdist
@@ -97,25 +97,25 @@ time ssh mdw <<EOF
     PGPORT=${SOURCE_MASTER_PORT} gpstop -ar
 
     cd /home/gpadmin/industry_demo
-    psql -d gpdb_demo -f data_generation/prep_UDFs.sql
+    psql -d gpdb_demo -e -f data_generation/prep_UDFs.sql
 
     data_generation/prep_GUCs.sh
 
     # preparing data
-    psql -d gpdb_demo -f data_generation/prep_retail_xts_tables.sql
-    psql -d gpdb_demo -f data_generation/prep_dimensions.sql
-    psql -d gpdb_demo -f data_generation/prep_facts.sql
-    psql -d gpdb_demo -f data_generation/prep_exports.sql
+    psql -d gpdb_demo -e -f data_generation/prep_retail_xts_tables.sql
+    psql -d gpdb_demo -e -f data_generation/prep_dimensions.sql
+    psql -d gpdb_demo -e -f data_generation/prep_facts.sql
+    psql -d gpdb_demo -e -f data_generation/prep_exports.sql
 
     # generating data
-    psql -d gpdb_demo -f data_generation/gen_order_base.sql
-    psql -d gpdb_demo -f data_generation/gen_facts.sql
-    psql -d gpdb_demo -f data_generation/gen_load_files.sql
-    psql -d gpdb_demo -f data_generation/load_RFMT_Scores.sql
+    psql -d gpdb_demo -e -f data_generation/gen_order_base.sql
+    psql -d gpdb_demo -e -f data_generation/gen_facts.sql
+    psql -d gpdb_demo -e -f data_generation/gen_load_files.sql
+    psql -d gpdb_demo -e -f data_generation/load_RFMT_Scores.sql
 
     # verifying data
     # TODO: assert on the output of verification script
-    psql -d gpdb_demo -f data_generation/verify_data.sql
+    psql -d gpdb_demo -e -f data_generation/verify_data.sql
 EOF
 
 # remove gphdfs from the source 5X cluster
