@@ -57,6 +57,14 @@ pushd retail_demo_src
 
     # extract demo_data for both mdw and segments
     tar xf demo_data.tar.xz
+
+    pushd demo_data
+        # decimate key data files to speed things up
+        for f in male_first_names.txt female_first_names.txt products_full.dat surnames.dat; do
+            awk 'NR % 10 == 0' "$f" > tmp.txt
+            mv tmp.txt "$f"
+        done
+    popd
 popd
 
 # copy extracted demo_data and retail_demo_src to mdw
