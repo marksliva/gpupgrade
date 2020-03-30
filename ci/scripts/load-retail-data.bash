@@ -131,7 +131,7 @@ ssh mdw "
     set -x
 
     source ${GPHOME_OLD}/greenplum_path.sh
-    psql -d postgres <<SQL_EOF
+    psql -d gpdb_demo <<SQL_EOF
         CREATE OR REPLACE FUNCTION drop_gphdfs() RETURNS VOID AS \\\$\\\$
         DECLARE
           rolerow RECORD;
