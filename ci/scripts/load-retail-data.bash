@@ -103,7 +103,7 @@ time ssh mdw <<EOF
     psql -d gpdb_demo -e -f data_generation/prep_retail_xts_tables.sql
     psql -d gpdb_demo -e -f data_generation/prep_dimensions.sql
     psql -d gpdb_demo -e -f data_generation/prep_facts.sql
-    psql -d gpdb_demo -e -f data_generation/prep_exports.sql
+    psql -d gpdb_demo -e -f data_generation/prep_tablespace.sql
 
     # generating data
     psql -d gpdb_demo -e -f data_generation/gen_order_base.sql
