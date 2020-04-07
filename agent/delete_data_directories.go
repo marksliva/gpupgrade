@@ -11,7 +11,7 @@ import (
 	"github.com/greenplum-db/gpupgrade/utils"
 )
 
-var postgresFiles = [...]string {"postgresql.conf", "PG_VERSION"}
+var PostgresFiles = [...]string {"postgresql.conf", "PG_VERSION"}
 
 func (s *Server) DeleteDirectories(ctx context.Context, in *idl.DeleteDirectoriesRequest) (*idl.DeleteDirectoriesReply, error) {
 	gplog.Info("got a request to delete data directories from the hub")
@@ -22,7 +22,7 @@ func (s *Server) DeleteDirectories(ctx context.Context, in *idl.DeleteDirectorie
 
 		var postgresFilesError *multierror.Error
 
-		for _, fileName := range postgresFiles {
+		for _, fileName := range PostgresFiles {
 			filePath := filepath.Join(segDataDir, fileName)
 			_, err := utils.System.Stat(filePath)
 			if err != nil {

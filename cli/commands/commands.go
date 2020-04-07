@@ -31,11 +31,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
+	"github.com/greenplum-db/gpupgrade/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -109,6 +111,7 @@ func BuildRootCommand() *cobra.Command {
 	root.AddCommand(initialize())
 	root.AddCommand(execute())
 	root.AddCommand(finalize())
+	root.AddCommand(revert())
 	root.AddCommand(restartServices)
 	root.AddCommand(killServices)
 	root.AddCommand(Agent())
@@ -445,6 +448,40 @@ func finalize() *cobra.Command {
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "print the output stream from all substeps")
 
 	return addHelpToCommand(cmd, FinalizeHelp)
+}
+
+func revert() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "revert",
+		Short: "reverts the upgrade and returns the cluster to its original state",
+		Long:  "reverts the upgrade and returns the cluster to its original state",
+		Run: func(cmd *cobra.Command, args []string) {
+			client := connectToHub()
+			err := commanders.Revert(client)
+			if err != nil {
+				gplog.Error(err.Error())
+				os.Exit(1)
+			}
+
+			// todo: is there a way to instruct the hub to interrupt its own process gracefully?
+			err = exec.Command("pkill", "-f", "gpupgrade hub").Run()
+			if err != nil {
+				gplog.Error(err.Error())
+				os.Exit(1)
+			}
+
+			err = utils.System.RemoveAll(utils.GetStateDir())
+			if err != nil {
+				gplog.Error(err.Error())
+				os.Exit(1)
+			}
+
+			fmt.Println("Revert completed successfully.")
+			fmt.Println("")
+		},
+	}
+
+	return cmd
 }
 
 func parsePorts(val string) ([]uint32, error) {
