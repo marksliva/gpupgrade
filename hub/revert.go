@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
+	"github.com/greenplum-db/gpupgrade/upgrade"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/greenplum-db/gpupgrade/idl"
@@ -25,7 +26,7 @@ func (s *Server) Revert(_ *idl.RevertRequest, stream idl.CliToHub_RevertServer) 
 			gplog.Error(fmt.Sprintf("revert: %s", err))
 		}
 	}()
-
+	// delete state dirs on all hosts except the master host (for logging)
 	err = DeleteSegmentAndStandbyDirectories(s.agentConns, s.Config.Target)
 	if err != nil {
 		return err
@@ -36,7 +37,7 @@ func (s *Server) Revert(_ *idl.RevertRequest, stream idl.CliToHub_RevertServer) 
 		return err
 	}
 
-	err = DeleteMasterDataDirectory(s.Config.Target.MasterDataDir())
+	err = upgrade.DeleteDataDirectories([]string{s.Config.Target.MasterDataDir()})
 	if err != nil {
 		return err
 	}
