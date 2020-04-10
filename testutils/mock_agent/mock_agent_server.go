@@ -90,6 +90,11 @@ func (m *MockAgentServer) DeleteDirectories(context.Context, *idl.DeleteDirector
 	return &idl.DeleteDirectoriesReply{}, nil
 }
 
+func (m *MockAgentServer) DeleteDirectory(context.Context, *idl.DeleteDirectoryRequest) (*idl.DeleteDirectoryReply, error) {
+	m.increaseCalls()
+	return &idl.DeleteDirectoryReply{}, nil
+}
+
 func (m *MockAgentServer) StopAgent(ctx context.Context, in *idl.StopAgentRequest) (*idl.StopAgentReply, error) {
 	return &idl.StopAgentReply{}, nil
 }

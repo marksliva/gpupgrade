@@ -135,6 +135,26 @@ func (mr *MockAgentClientMockRecorder) DeleteDirectories(ctx, in interface{}, op
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDirectories", reflect.TypeOf((*MockAgentClient)(nil).DeleteDirectories), varargs...)
 }
 
+// DeleteDirectory mocks base method
+func (m *MockAgentClient) DeleteDirectory(ctx context.Context, in *idl.DeleteDirectoryRequest, opts ...grpc.CallOption) (*idl.DeleteDirectoryReply, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteDirectory", varargs...)
+	ret0, _ := ret[0].(*idl.DeleteDirectoryReply)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteDirectory indicates an expected call of DeleteDirectory
+func (mr *MockAgentClientMockRecorder) DeleteDirectory(ctx, in interface{}, opts ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDirectory", reflect.TypeOf((*MockAgentClient)(nil).DeleteDirectory), varargs...)
+}
+
 // MockAgentServer is a mock of AgentServer interface
 type MockAgentServer struct {
 	ctrl     *gomock.Controller
@@ -231,4 +251,19 @@ func (m *MockAgentServer) DeleteDirectories(arg0 context.Context, arg1 *idl.Dele
 func (mr *MockAgentServerMockRecorder) DeleteDirectories(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDirectories", reflect.TypeOf((*MockAgentServer)(nil).DeleteDirectories), arg0, arg1)
+}
+
+// DeleteDirectory mocks base method
+func (m *MockAgentServer) DeleteDirectory(arg0 context.Context, arg1 *idl.DeleteDirectoryRequest) (*idl.DeleteDirectoryReply, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteDirectory", arg0, arg1)
+	ret0, _ := ret[0].(*idl.DeleteDirectoryReply)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteDirectory indicates an expected call of DeleteDirectory
+func (mr *MockAgentServerMockRecorder) DeleteDirectory(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDirectory", reflect.TypeOf((*MockAgentServer)(nil).DeleteDirectory), arg0, arg1)
 }

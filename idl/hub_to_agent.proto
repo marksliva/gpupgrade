@@ -10,6 +10,7 @@ service Agent {
   rpc RenameDirectories (RenameDirectoriesRequest) returns (RenameDirectoriesReply) {}
   rpc StopAgent (StopAgentRequest) returns (StopAgentReply) {}
   rpc DeleteDirectories (DeleteDirectoriesRequest) returns (DeleteDirectoriesReply) {}
+  rpc DeleteDirectory (DeleteDirectoryRequest) returns (DeleteDirectoryReply) {}
 }
 
 message UpgradePrimariesRequest {
@@ -36,8 +37,12 @@ message UpgradePrimariesReply {}
 message DeleteDirectoriesRequest {
   repeated string datadirs = 1;
 }
+message DeleteDirectoryRequest {
+  string directory = 1;
+}
 
 message DeleteDirectoriesReply {}
+message DeleteDirectoryReply {}
 
 message RenamePair {
   string Src = 1;
