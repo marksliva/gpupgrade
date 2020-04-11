@@ -37,7 +37,7 @@ func (s *Server) Revert(_ *idl.RevertRequest, stream idl.CliToHub_RevertServer) 
 		return err
 	}
 
-	err = upgrade.DeleteDataDirectories([]string{s.Config.Target.MasterDataDir()})
+	err = upgrade.DeleteDirectories([]string{s.Config.Target.MasterDataDir()}, nil)
 	if err != nil {
 		return err
 	}

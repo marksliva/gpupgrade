@@ -135,24 +135,24 @@ func (mr *MockAgentClientMockRecorder) DeleteDirectories(ctx, in interface{}, op
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDirectories", reflect.TypeOf((*MockAgentClient)(nil).DeleteDirectories), varargs...)
 }
 
-// DeleteDirectory mocks base method
-func (m *MockAgentClient) DeleteDirectory(ctx context.Context, in *idl.DeleteDirectoryRequest, opts ...grpc.CallOption) (*idl.DeleteDirectoryReply, error) {
+// DeleteStateDirectory mocks base method
+func (m *MockAgentClient) DeleteStateDirectory(ctx context.Context, in *idl.DeleteStateDirectoryRequest, opts ...grpc.CallOption) (*idl.DeleteStateDirectoryReply, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "DeleteDirectory", varargs...)
-	ret0, _ := ret[0].(*idl.DeleteDirectoryReply)
+	ret := m.ctrl.Call(m, "DeleteStateDirectory", varargs...)
+	ret0, _ := ret[0].(*idl.DeleteStateDirectoryReply)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// DeleteDirectory indicates an expected call of DeleteDirectory
-func (mr *MockAgentClientMockRecorder) DeleteDirectory(ctx, in interface{}, opts ...interface{}) *gomock.Call {
+// DeleteStateDirectory indicates an expected call of DeleteStateDirectory
+func (mr *MockAgentClientMockRecorder) DeleteStateDirectory(ctx, in interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{ctx, in}, opts...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDirectory", reflect.TypeOf((*MockAgentClient)(nil).DeleteDirectory), varargs...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteStateDirectory", reflect.TypeOf((*MockAgentClient)(nil).DeleteStateDirectory), varargs...)
 }
 
 // MockAgentServer is a mock of AgentServer interface
@@ -253,17 +253,17 @@ func (mr *MockAgentServerMockRecorder) DeleteDirectories(arg0, arg1 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDirectories", reflect.TypeOf((*MockAgentServer)(nil).DeleteDirectories), arg0, arg1)
 }
 
-// DeleteDirectory mocks base method
-func (m *MockAgentServer) DeleteDirectory(arg0 context.Context, arg1 *idl.DeleteDirectoryRequest) (*idl.DeleteDirectoryReply, error) {
+// DeleteStateDirectory mocks base method
+func (m *MockAgentServer) DeleteStateDirectory(arg0 context.Context, arg1 *idl.DeleteStateDirectoryRequest) (*idl.DeleteStateDirectoryReply, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteDirectory", arg0, arg1)
-	ret0, _ := ret[0].(*idl.DeleteDirectoryReply)
+	ret := m.ctrl.Call(m, "DeleteStateDirectory", arg0, arg1)
+	ret0, _ := ret[0].(*idl.DeleteStateDirectoryReply)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// DeleteDirectory indicates an expected call of DeleteDirectory
-func (mr *MockAgentServerMockRecorder) DeleteDirectory(arg0, arg1 interface{}) *gomock.Call {
+// DeleteStateDirectory indicates an expected call of DeleteStateDirectory
+func (mr *MockAgentServerMockRecorder) DeleteStateDirectory(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDirectory", reflect.TypeOf((*MockAgentServer)(nil).DeleteDirectory), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteStateDirectory", reflect.TypeOf((*MockAgentServer)(nil).DeleteStateDirectory), arg0, arg1)
 }

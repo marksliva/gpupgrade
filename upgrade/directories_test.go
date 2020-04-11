@@ -61,18 +61,19 @@ func TestDeleteDataDirectories(t *testing.T) {
 
 	dataDirectories := []string{"/data/dbfast_mirror1/seg1", "/data/dbfast_mirror2/seg2"}
 
-	t.Run("successfully deletes the data directories", func(t *testing.T) {
-		expectedDataDirectories := []string{"/data/dbfast_mirror1/seg1", "/data/dbfast_mirror2/seg2"}
+	t.Run("successfully deletes the data directories if all required files exist for that directory", func(t *testing.T) {
+		filesThatMustExist := []string{"postgres-file-1", "postgres-file-2"}
 		actualDataDirectories := []string{}
 		utils.System.RemoveAll = func(name string) error {
 			actualDataDirectories = append(actualDataDirectories, name)
 			return nil
 		}
 
-		expectedFilesStatCalls := []string{"/data/dbfast_mirror1/seg1/postgresql.conf",
-			"/data/dbfast_mirror1/seg1/PG_VERSION",
-			"/data/dbfast_mirror2/seg2/postgresql.conf",
-			"/data/dbfast_mirror2/seg2/PG_VERSION"}
+		expectedFilesStatCalls := []string{"/data/dbfast_mirror1/seg1/postgres-file-1",
+			"/data/dbfast_mirror1/seg1/postgres-file-2",
+			"/data/dbfast_mirror2/seg2/postgres-file-1",
+			"/data/dbfast_mirror2/seg2/postgres-file-2",
+		}
 		actualFilesStatCalls := []string{}
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			actualFilesStatCalls = append(actualFilesStatCalls, name)
@@ -80,10 +81,10 @@ func TestDeleteDataDirectories(t *testing.T) {
 			return nil, nil
 		}
 
-		err := upgrade.DeleteDataDirectories(dataDirectories)
+		err := upgrade.DeleteDirectories(dataDirectories, filesThatMustExist)
 
-		if !reflect.DeepEqual(actualDataDirectories, expectedDataDirectories) {
-			t.Errorf("got %s, want %s", actualDataDirectories, expectedDataDirectories)
+		if !reflect.DeepEqual(actualDataDirectories, dataDirectories) {
+			t.Errorf("got %s, want %s", actualDataDirectories, dataDirectories)
 		}
 
 		if !reflect.DeepEqual(actualFilesStatCalls, expectedFilesStatCalls) {
@@ -101,7 +102,7 @@ func TestDeleteDataDirectories(t *testing.T) {
 			return nil, expected
 		}
 
-		err := upgrade.DeleteDataDirectories(dataDirectories)
+		err := upgrade.DeleteDirectories(dataDirectories, []string{"a", "b"})
 
 		var multiErr *multierror.Error
 		if !xerrors.As(err, &multiErr) {
@@ -109,7 +110,7 @@ func TestDeleteDataDirectories(t *testing.T) {
 		}
 
 		if len(multiErr.Errors) != 4 {
-			t.Errorf("received %d errors, want %d", len(multiErr.Errors), 1)
+			t.Errorf("received %d errors, want %d", len(multiErr.Errors), 4)
 		}
 
 		for _, err := range multiErr.Errors {
@@ -137,7 +138,7 @@ func TestDeleteDataDirectories(t *testing.T) {
 			return nil, nil
 		}
 
-		err := upgrade.DeleteDataDirectories(dataDirectories)
+		err := upgrade.DeleteDirectories(dataDirectories, []string{"foo", "bar"})
 
 		var multiErr *multierror.Error
 		if !xerrors.As(err, &multiErr) {

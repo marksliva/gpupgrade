@@ -9,8 +9,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-var postgresFiles = [...]string {"postgresql.conf", "PG_VERSION"}
-
 // pgUpgradeDirectory returns a path to a directory underneath the state
 // directory that is to be used for storing pg_upgrade state. It does not ensure
 // the directory exists first.
@@ -62,13 +60,13 @@ func TempDataDir(datadir, segPrefix string, id ID) string {
 	return filepath.Join(dir, newBase)
 }
 
-func DeleteDataDirectories(directories []string) *multierror.Error {
+func DeleteDirectories(directoriesToDelete []string, filesThatMustExist []string) *multierror.Error {
 	var mErr *multierror.Error
-	for _, segDataDir := range directories {
+	for _, segDataDir := range directoriesToDelete {
 
 		var postgresFilesError *multierror.Error
 
-		for _, fileName := range postgresFiles {
+		for _, fileName := range filesThatMustExist {
 			filePath := filepath.Join(segDataDir, fileName)
 			_, err := utils.System.Stat(filePath)
 			if err != nil {

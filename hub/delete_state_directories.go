@@ -7,6 +7,7 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpupgrade/idl"
 	"github.com/greenplum-db/gpupgrade/utils"
+	"github.com/hashicorp/go-multierror"
 )
 
 //func (s *Server) DeleteDirectories(ctx context.Context, in *idl.DeleteDirectoriesRequest) (*idl.DeleteDirectoriesReply, error) {
@@ -26,8 +27,10 @@ func DeleteStateDirectories(agentConns []*Connection, masterHostName string) err
 
 		wg.Add(1)
 		go func(c *Connection) {
-			request := idl.DeleteDirectoryRequest{Directory: stateDir}
-			_, err := c.AgentClient.DeleteDirectory(context.Background(), request)
+			defer wg.Done()
+
+			request := &idl.DeleteStateDirectoryRequest{Directory: stateDir}
+			_, err := c.AgentClient.DeleteStateDirectory(context.Background(), request)
 			if err != nil {
 				gplog.Error("Error deleting state directory on host %s: %s",
 					c.Hostname, err.Error())
@@ -35,5 +38,14 @@ func DeleteStateDirectories(agentConns []*Connection, masterHostName string) err
 			}
 		}(conn)
 	}
-	return nil
+
+	wg.Wait()
+	close(errChan)
+
+	var mErr *multierror.Error
+	for err := range errChan {
+		mErr = multierror.Append(mErr, err)
+	}
+
+	return mErr.ErrorOrNil()
 }
