@@ -26,11 +26,13 @@ func (s *Server) Revert(_ *idl.RevertRequest, stream idl.CliToHub_RevertServer) 
 			gplog.Error(fmt.Sprintf("revert: %s", err))
 		}
 	}()
-	// delete state dirs on all hosts except the master host (for logging)
+
 	err = DeleteSegmentAndStandbyDirectories(s.agentConns, s.Config.Target)
 	if err != nil {
 		return err
 	}
+
+	// todo: DeleteStateDirectories()
 
 	err = s.StopAgents()
 	if err != nil {
